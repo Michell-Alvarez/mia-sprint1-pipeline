@@ -4,8 +4,7 @@
 Detección de violencia armada en video vigilancia usando una arquitectura híbrida 3DCNN y LSTM
 
 **Objetivo:** 
-
-Objetivo: Desarrollar e implementar un sistema integral que, mediante un modelo híbrido **3DCNN-LSTM** y una interfaz web, detecte automáticamente **violencia armada** en videos para su **monitoreo en tiempo real**.
+Desarrollar e implementar un sistema integral que, mediante un modelo híbrido **3DCNN-LSTM** y una interfaz web, detecte automáticamente **violencia armada** en videos para su **monitoreo en tiempo real**.
 
 
 ## Autores
@@ -45,6 +44,7 @@ Se han dividido en los siguientes subconjuntos:
 
 
 ## Requisitos:
+
 Ejecuta el siguiente comando para instalar las dependencias necesarias:
 pip install -r requirements.txt
 
@@ -101,6 +101,7 @@ robo_armado_pipeline/
 
 
 ## Cómo correr el pipeline:
+
 Para ejecutar el pipeline, primero instale las dependencias listadas en el archivo requirements.txt. Luego, ubicándose en la carpeta robo_armado_pipeline/, ejecute el script run_pipeline.sh para iniciar el proceso. 
 
 
