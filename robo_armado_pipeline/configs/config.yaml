@@ -1,0 +1,27 @@
+# Configuración de rutas existentes
+data:
+  train_dir: "/home/michell-alvarez/e_modelos/EF/Violencia/Train"
+  test_dir: "/home/michell-alvarez/e_modelos/EF/Violencia/Test"
+  classes: ["NonViolence", "Violence"]
+  frame_size: 112 # Tamaño al que se redimensiona cada frame (112x112 píxeles)        
+  num_frames: 16 # Número de frames que se toman de cada video        
+
+training:
+  batch_size: 8 # Cantidad de videos procesados en paralelo por iteración
+  epochs: 30 # Número de veces que el modelo verá todos los datos de entrenamiento
+  learning_rate: 0.001 # Velocidad con la que se ajustan los pesos del modelo
+  early_stop_patience: 10 # Nº de épocas sin mejora antes de detener el entrenamiento
+  train_split: 0.8 # 80% de los datos para entrenamiento
+  val_split: 0.2 # 20% de los datos para validación
+
+model:
+  name: "Baseline3DCNN"
+  channels: [8, 16, 32] # Nº de filtros (profundidad) en cada capa convolucional de la red
+  dropout: 0.3 # Probabilidad (30%) de desactivar neuronas para evitar sobreajuste
+  
+paths:
+  index_file: "data/video_index.csv"
+  train_index: "data/train_index.csv" 
+  test_index: "data/test_index.csv"
+  checkpoints: "checkpoints/"
+  logs: "logs/training.log"
