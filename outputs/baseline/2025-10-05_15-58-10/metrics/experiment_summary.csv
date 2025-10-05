@@ -1,0 +1,2 @@
+model_name,run_id,seed,best_val_acc
+baseline,2025-10-05_15-58-10,42,0.7209
