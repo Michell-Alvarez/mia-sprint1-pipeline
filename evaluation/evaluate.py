@@ -1,175 +1,231 @@
-import torch
+import os, yaml, torch, random, numpy as np
+from pathlib import Path
+from datetime import datetime
 from torch.utils.data import DataLoader
-import yaml
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.metrics import classification_report, precision_recall_fscore_support, confusion_matrix
-import numpy as np
-import os
-# Usar ruta absoluta o encontrar la ruta correcta
-current_dir = os.path.dirname(os.path.abspath(__file__))
-config_path = os.path.join(current_dir, '..', 'configs', 'config.yaml')
+
 from models.cnn3d_model import Baseline3DCNN, VideoDataset
 
-def plot_confusion_matrix(cm, classes, save_path='outputs/plots/confusion_matrix.png'):
-    """Genera y guarda una matriz de confusión visual"""
+# Rutas base
+current_dir = os.path.dirname(os.path.abspath(__file__))
+config_path = os.path.join(current_dir, '..', 'configs', 'config.yaml')
+
+# ---------- Utilidades ----------
+def set_seed(seed:int):
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    np.random.seed(seed)
+    random.seed(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+def resolve_run_dir(config, model_name:str):
+    """
+    Prioriza:
+    1) config['paths']['run_root'] si viene desde el entrenamiento,
+    2) config['paths']['checkpoints'] (sube a la carpeta del run),
+    3) symlink 'outputs/<model_name>/latest',
+    4) último directorio por timestamp en 'outputs/<model_name>/*'
+    """
+
+
+    # 1) run_root
+    raw_rr = config.get('paths', {}).get('run_root', None)
+    if raw_rr:
+        rr = Path(raw_rr)
+        if rr.exists():
+            print(f"[INFO] Usando run_root definido: {rr}")
+            return rr
+        else:
+            print(f"[WARN] run_root definido pero no existe: {rr}")
+            
+    # 2)
+    raw_rrr = config.get('paths', {}).get('checkpoints', None)
+    if raw_rrr:
+        rr = Path(raw_rrr)
+        if rr.exists():
+            print(f"[INFO] Usando checkpoints definido: {rr}")
+            return rr
+        else:
+            print(f"[WARN] checkpoints definido pero no existe: {rr}")
+            
+    # 3)
+    base_out = Path(config.get('paths', {}).get('base_outputs', 'outputs'))
+    latest = base_out / model_name / "latest"
+    if latest.exists():
+        return latest.resolve()
+
+    # 4)
+    model_out = base_out / model_name
+    if model_out.exists():
+        runs = sorted([p for p in model_out.iterdir() if p.is_dir()], reverse=True)
+        if runs:
+            return runs[0]
+
+    raise FileNotFoundError("No se pudo resolver el run_dir. Asegúrate de pasar rutas válidas en config o crear el symlink 'latest'.")
+
+def make_eval_dirs(run_dir:Path):
+    eval_run_id = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    root = run_dir / "eval" / eval_run_id
+    (root / "plots").mkdir(parents=True, exist_ok=True)
+    (root / "metrics").mkdir(parents=True, exist_ok=True)
+    return eval_run_id, root
+
+def plot_confusion_matrix(cm, classes, save_path:Path):
     plt.figure(figsize=(8, 6))
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', 
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
                 xticklabels=classes, yticklabels=classes)
     plt.title('Matriz de Confusión - Detección de Robo Armado')
     plt.ylabel('Etiqueta Real')
     plt.xlabel('Predicción')
     plt.tight_layout()
-    
-    # Guardar imagen
-    os.makedirs(os.path.dirname(save_path), exist_ok=True)
-    plt.savefig(save_path, dpi=300, bbox_inches='tight')
-    #plt.show()
+    save_path.parent.mkdir(parents=True, exist_ok=True)
+    plt.savefig(str(save_path), dpi=300, bbox_inches='tight')
+    # plt.show()
 
+# ---------- Evaluación ----------
 def evaluate_model():
-    """Evalúa el modelo final con el conjunto de test"""
-    
     with open(config_path, 'r') as f:
         config = yaml.safe_load(f)
-    
+
+    # Lee semilla y modelo desde config
+    seed = int(config.get('experiment', {}).get('seed', 42))
+    model_name = config.get('experiment', {}).get('model', 'baseline')  # 'baseline' | 'solid' ...
+    set_seed(seed)
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    
-    # Cargar modelo
+
+    # Resolver carpeta del run a evaluar
+    run_dir = resolve_run_dir(config, model_name)
+    print(run_dir)
+    checkpoints_dir = run_dir / "models"
+    print(checkpoints_dir)
+    best_model_path = checkpoints_dir / "best_model.pth"
+    if not best_model_path.exists():
+        raise FileNotFoundError(f"No se encontró {best_model_path}. Verifica el run que intentas evaluar.")
+
+    # Crear carpeta de evaluación
+    eval_run_id, eval_root = make_eval_dirs(run_dir)
+    plots_dir = eval_root / "plots"
+    metrics_dir = eval_root / "metrics"
+
+    # Cargar modelo y pesos
     model = Baseline3DCNN().to(device)
-    model.load_state_dict(torch.load(f"{config['paths']['checkpoints']}/best_model.pth"))
+    state_dict = torch.load(str(best_model_path), map_location=device)
+    model.load_state_dict(state_dict)
     model.eval()
-    
-    # Dataset de test
+
+    # Dataset de test (sin aleatoriedad)
     test_dataset = VideoDataset(config['paths']['test_index'])
-    test_loader = DataLoader(test_dataset, batch_size=config['training']['batch_size'], shuffle=False)
-    
+    test_loader = DataLoader(test_dataset,
+                             batch_size=config['training']['batch_size'],
+                             shuffle=False)
+
     # Evaluación
-    all_preds = []
-    all_labels = []
-    all_probabilities = []
-    
+    all_preds, all_labels, all_probabilities = [], [], []
     with torch.no_grad():
         for inputs, labels in test_loader:
             inputs, labels = inputs.to(device), labels.to(device)
             outputs = model(inputs)
             probabilities = torch.softmax(outputs, dim=1)
             _, preds = torch.max(outputs, 1)
-            
+
             all_preds.extend(preds.cpu().numpy())
             all_labels.extend(labels.cpu().numpy())
             all_probabilities.extend(probabilities.cpu().numpy())
-    
-    # Convertir a arrays numpy
+
     all_labels = np.array(all_labels)
     all_preds = np.array(all_preds)
     all_probabilities = np.array(all_probabilities)
-    
-    # 1. MATRIZ DE CONFUSIÓN
+
+    # Métricas
+    class_names = ['No Robo', 'Robo Armado']
     cm = confusion_matrix(all_labels, all_preds)
-    class_names = ['No Robo', 'Robo Armado']  # Más descriptivo que NonViolence/Violence
-    
-    print("=== MATRIZ DE CONFUSIÓN ===")
-    print(f"Verdaderos Negativos (TN): {cm[0, 0]}")  # No robo correcto
-    print(f"Falsos Positivos (FP): {cm[0, 1]}")      # No robo predicho como robo
-    print(f"Falsos Negativos (FN): {cm[1, 0]}")      # Robo predicho como no robo
-    print(f"Verdaderos Positivos (TP): {cm[1, 1]}")  # Robo correcto
-    print("\nMatriz completa:")
-    print(cm)
-    
-    # 2. MÉTRICAS DETALLADAS
-    report = classification_report(all_labels, all_preds, target_names=class_names)
-    precision, recall, f1, _ = precision_recall_fscore_support(all_labels, all_preds, average='weighted')
-    
-    # Métricas específicas por clase
     tn, fp, fn, tp = cm.ravel()
     accuracy = (tp + tn) / (tp + tn + fp + fn)
-    specificity = tn / (tn + fp)  # Tasa de verdaderos negativos
-    sensitivity = recall = tp / (tp + fn)  # Tasa de verdaderos positivos
-    
+    precision, recall_w, f1_w, _ = precision_recall_fscore_support(all_labels, all_preds, average='weighted')
+    specificity = tn / (tn + fp) if (tn + fp) > 0 else 0.0
+    sensitivity = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+
+    # Reporte por clase (para consola)
+    report = classification_report(all_labels, all_preds, target_names=class_names)
+    print("\n=== MATRIZ DE CONFUSIÓN ===")
+    print(cm)
     print("\n=== MÉTRICAS DETALLADAS ===")
     print(report)
-    print(f"\n=== MÉTRICAS RESUMEN ===")
-    print(f"Exactitud (Accuracy): {accuracy:.4f}")
-    print(f"Precisión (Weighted): {precision:.4f}")
-    print(f"Sensibilidad (Recall): {recall:.4f}")
-    print(f"F1-Score: {f1:.4f}")
-    print(f"Especificidad: {specificity:.4f}")
-    
-    # 3. ANÁLISIS ADICIONAL
-    print(f"\n=== ANÁLISIS POR CLASE ===")
-    print(f"Robo Armado detectado correctamente: {tp}/{tp+fn} ({sensitivity:.2%})")
-    print(f"No Robo identificado correctamente: {tn}/{tn+fp} ({specificity:.2%})")
-    print(f"Falsas alarmas (FP): {fp} → {fp/(tp+fp):.2%} de las predicciones positivas")
-    print(f"Robos no detectados (FN): {fn} → {fn/(tp+fn):.2%} de los robos reales")
-    
-    # 4. GRÁFICO DE MATRIZ DE CONFUSIÓN
-    plot_confusion_matrix(cm, class_names)
-    
-    # 5. GUARDAR RESULTADOS COMPLETOS
-    results = {
-        'confusion_matrix': cm.tolist(),
-        'metrics': {
-            'accuracy': accuracy,
-            'precision': precision,
-            'recall': recall,
-            'f1_score': f1,
-            'specificity': specificity,
-            'sensitivity': sensitivity
-        },
-        'counts': {
-            'true_positives': int(tp),
-            'true_negatives': int(tn),
-            'false_positives': int(fp),
-            'false_negatives': int(fn),
-            'total_samples': len(all_labels)
-        },
-        'class_distribution': {
-            'actual_robos': int(tp + fn),
-            'actual_no_robos': int(tn + fp)
-        }
-    }
-    
-    # Guardar resultados en CSV
-    results_df = pd.DataFrame({
+    print(f"Exactitud: {accuracy:.4f} | F1 (weighted): {f1_w:.4f} | Precisión (weighted): {precision:.4f}")
+    print(f"Sensibilidad: {sensitivity:.4f} | Especificidad: {specificity:.4f}")
+    print(f"[INFO] model={model_name} seed={seed} run={run_dir.name} eval_run={eval_run_id}")
+
+    # Guardar artefactos de evaluación dentro del run evaluado
+    plot_confusion_matrix(cm, class_names, save_path=plots_dir / "confusion_matrix.png")
+
+    # Detalle por muestra
+    detailed_df = pd.DataFrame({
         'real': all_labels,
         'predicho': all_preds,
         'probabilidad_robo': all_probabilities[:, 1],
         'probabilidad_no_robo': all_probabilities[:, 0]
     })
-    results_df.to_csv('outputs/metrics/detailed_results.csv', index=False)
-    
-    # Guardar métricas principales
-    metrics_df = pd.DataFrame([results['metrics']])
-    metrics_df.to_csv('outputs/metrics/model_metrics.csv', index=False)
-    
-    print(f"\n✅ Resultados guardados en:")
-    print(f"   - outputs/plots/confusion_matrix.png")
-    print(f"   - outputs/metrics/detailed_results.csv")
-    print(f"   - outputs/metrics/model_metrics.csv")
-    
-    return results
+    detailed_df.to_csv(metrics_dir / "detailed_results.csv", index=False)
 
-def analyze_misclassifications():
-    """Análisis adicional de errores de clasificación"""
-    results_df = pd.read_csv('outputs/metrics/detailed_results.csv')
-    
-    # Falsos positivos (alarmas falsas)
+    # Resumen de métricas
+    metrics_df = pd.DataFrame([{
+        'accuracy': accuracy,
+        'precision_weighted': precision,
+        'recall_weighted': recall_w,
+        'f1_weighted': f1_w,
+        'specificity': specificity,
+        'sensitivity': sensitivity,
+        'seed': seed,
+        'model_name': model_name,
+        'train_run_id': run_dir.name,
+        'eval_run_id': eval_run_id
+    }])
+    metrics_df.to_csv(metrics_dir / "model_metrics.csv", index=False)
+
+    print(f"\n✅ Guardado en:\n  {plots_dir / 'confusion_matrix.png'}\n  {metrics_dir / 'detailed_results.csv'}\n  {metrics_dir / 'model_metrics.csv'}")
+
+    return {
+        'cm': cm.tolist(),
+        'metrics': metrics_df.to_dict(orient='records')[0]
+    }
+
+def analyze_misclassifications(run_dir:Path):
+    """Analiza errores usando el CSV del eval más reciente de ese run"""
+    eval_root = run_dir / "eval"
+    if not eval_root.exists():
+        print("No hay evaluaciones registradas para este run.")
+        return
+    last_eval = sorted([p for p in eval_root.iterdir() if p.is_dir()], reverse=True)[0]
+    detailed_csv = last_eval / "metrics" / "detailed_results.csv"
+    if not detailed_csv.exists():
+        print("No se encontró detailed_results.csv en el eval más reciente.")
+        return
+
+    results_df = pd.read_csv(detailed_csv)
     false_positives = results_df[(results_df['real'] == 0) & (results_df['predicho'] == 1)]
-    # Falsos negativos (robos no detectados)
     false_negatives = results_df[(results_df['real'] == 1) & (results_df['predicho'] == 0)]
-    
-    print(f"\n=== ANÁLISIS DE ERRORES ===")
-    print(f"Falsos Positivos (Alarmas falsas): {len(false_positives)}")
+
+    print(f"\n=== ANÁLISIS DE ERRORES ({last_eval.name}) ===")
+    print(f"Falsos Positivos: {len(false_positives)}")
     if len(false_positives) > 0:
-        print(f"  - Probabilidad promedio de robo: {false_positives['probabilidad_robo'].mean():.3f}")
-        print(f"  - Rango de probabilidad: [{false_positives['probabilidad_robo'].min():.3f}, {false_positives['probabilidad_robo'].max():.3f}]")
-    
-    print(f"Falsos Negativos (Robos no detectados): {len(false_negatives)}")
+        print(f"  Prob. robo (prom): {false_positives['probabilidad_robo'].mean():.3f}  "
+              f"rango: [{false_positives['probabilidad_robo'].min():.3f}, {false_positives['probabilidad_robo'].max():.3f}]")
+
+    print(f"Falsos Negativos: {len(false_negatives)}")
     if len(false_negatives) > 0:
-        print(f"  - Probabilidad promedio de robo: {false_negatives['probabilidad_robo'].mean():.3f}")
-        print(f"  - Rango de probabilidad: [{false_negatives['probabilidad_robo'].min():.3f}, {false_negatives['probabilidad_robo'].max():.3f}]")
+        print(f"  Prob. robo (prom): {false_negatives['probabilidad_robo'].mean():.3f}  "
+              f"rango: [{false_negatives['probabilidad_robo'].min():.3f}, {false_negatives['probabilidad_robo'].max():.3f}]")
 
 if __name__ == "__main__":
-    results = evaluate_model()
-    analyze_misclassifications()
+    out = evaluate_model()
+    # Reutiliza el mismo run_dir resuelto para analizar el eval más reciente
+    with open(config_path, 'r') as f:
+        cfg = yaml.safe_load(f)
+    rd = resolve_run_dir(cfg, cfg.get('experiment', {}).get('model', 'baseline'))
+    analyze_misclassifications(rd)
+
