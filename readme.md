@@ -49,7 +49,7 @@ pip install -r requirements.txt
 
 
 ## Estructura del repositorio
-
+```
 robo_armado_pipeline/
 │
 ├── configs/
