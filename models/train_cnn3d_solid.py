@@ -7,15 +7,42 @@ from torch.cuda.amp import GradScaler, autocast
 from tqdm import tqdm
 from pathlib import Path
 from datetime import datetime
+import argparse
 
 from cnn3d_model_solid import (
     build_dataloaders,
     ViolenceDetector
 )
 
+'''
 # Usar ruta absoluta o encontrar la ruta correcta
 current_dir = os.path.dirname(os.path.abspath(__file__))
 config_path = os.path.join(current_dir, '..', 'configs', 'config_solid.yaml')
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--mode', type=str, default='fe_off', choices=['fe_off', 'fe_on'])
+args = parser.parse_args()
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+config_path = os.path.join(current_dir, '..', 'configs', f'config_solid_{args.mode}.yaml')
+'''
+
+# Crear un único parser
+parser = argparse.ArgumentParser()
+
+# Agregar ambos argumentos al mismo parser
+parser.add_argument('--mode', type=str, default='fe_off', choices=['fe_off', 'fe_on'],
+                    help="Modo de ejecución: con o sin feature engineering")
+parser.add_argument('--model', type=str, default='baseline', choices=['baseline', 'solid'],
+                    help="Modelo a ejecutar: baseline o solid")
+
+# Parsear argumentos una sola vez
+args = parser.parse_args()
+
+# Construir la ruta del archivo de configuración
+current_dir = os.path.dirname(os.path.abspath(__file__))
+config_path = os.path.join(current_dir, '..', 'configs', f'config_{args.model}_{args.mode}.yaml')
+
 
 # Activa una optimización en cudnn para mejorar el rendimiento en modelos estáticos
 torch.backends.cudnn.benchmark = True
@@ -26,9 +53,9 @@ np.random.seed(42)
 seed=42
 
 # ---------- 2) Estructura de salidas por run ----------
-def make_run_dirs(model_name: str, base_out: str = "outputs"):
+def make_run_dirs(model_fe: str, base_out: str = "outputs"):
     run_id = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    root = Path(base_out) / model_name / run_id
+    root = Path(base_out) / model_fe / run_id
     (root / "logs").mkdir(parents=True, exist_ok=True)
     (root / "metrics").mkdir(parents=True, exist_ok=True)
     #(root / "plots").mkdir(parents=True, exist_ok=True)
@@ -50,10 +77,14 @@ def main():
     with open(config_path, 'r') as f:
         cfg = yaml.safe_load(f)
 
+    
     # Lee nombre del modelo y seed desde config
     model_name = cfg.get('experiment', {}).get('model', 'solid')  # "baseline" o "solid"
+    mode_fe = cfg.get('experiment', {}).get('mode', 'fe_on')  # "fe_off" o "fe_on"
+    model_fe=model_name+'_'+mode_fe
+    
     # Crear run_id y carpetas de salida
-    run_id, run_root = make_run_dirs(model_name, base_out=cfg.get('paths', {}).get('base_outputs', 'outputs'))
+    run_id, run_root = make_run_dirs(model_fe, base_out=cfg.get('paths', {}).get('base_outputs', 'outputs'))
 
     # Actualizar rutas derivadas en memoria (sin tocar el YAML)
     paths = cfg.setdefault('paths', {})
@@ -67,8 +98,8 @@ def main():
     # Logger
     logger = setup_logging(Path(paths['logs']))
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    logger.info(f"Iniciando entrenamiento en {device} | model={model_name} | seed={seed} | run_id={run_id}")
-    print(f"[INFO] model={model_name} seed={seed} run_id={run_id} out={paths['run_root']}")
+    logger.info(f"Iniciando entrenamiento en {device} | model={model_fe} | seed={seed} | run_id={run_id}")
+    print(f"[INFO] model={model_fe} seed={seed} run_id={run_id} out={paths['run_root']}")
     
 
     print(f"Dispositivo: {device}")
@@ -189,8 +220,8 @@ def main():
     logger.info(f"best_val_acc,{best_acc:.4f}")
     # (Opcional) escribir un resumen de experimento
     with open(Path(paths['metrics_dir']) / "experiment_summary.csv", "w") as f:
-        f.write("model_name,run_id,seed,best_val_acc\n")
-        f.write(f"{model_name},{run_id},{seed},{best_acc:.4f}\n")
+        f.write("model_fe,run_id,seed,best_val_acc\n")
+        f.write(f"{model_fe},{run_id},{seed},{best_acc:.4f}\n")
         
 if __name__ == "__main__":
     main()

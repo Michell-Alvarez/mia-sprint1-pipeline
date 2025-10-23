@@ -1,11 +1,30 @@
 import os
 import pandas as pd
 import yaml
+import argparse
 
+'''
 # Usar ruta absoluta o encontrar la ruta correcta
 current_dir = os.path.dirname(os.path.abspath(__file__))
 config_path = os.path.join(current_dir, '..', 'configs', 'config.yaml')
+'''
+# Crear un único parser
+parser = argparse.ArgumentParser()
 
+# Agregar ambos argumentos al mismo parser
+parser.add_argument('--mode', type=str, default='fe_off', choices=['fe_off', 'fe_on'],
+                    help="Modo de ejecución: con o sin feature engineering")
+parser.add_argument('--model', type=str, default='baseline', choices=['baseline', 'solid'],
+                    help="Modelo a ejecutar: baseline o solid")
+
+# Parsear argumentos una sola vez
+args = parser.parse_args()
+
+# Construir la ruta del archivo de configuración
+current_dir = os.path.dirname(os.path.abspath(__file__))
+config_path = os.path.join(current_dir, '..', 'configs', f'config_{args.model}_{args.mode}.yaml')
+
+print(f"Configuración usada: {config_path}")
 
 def create_video_index(config_path=config_path):
     """Crea un índice de todos los videos basado en tu estructura de carpetas existente"""

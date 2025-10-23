@@ -1,0 +1,5 @@
+model_name,train_run_id,eval_run_id,seed,accuracy,f1_weighted,precision_weighted,recall_weighted,sensitivity,specificity
+baseline_fe_off,2025-10-19_23-03-56,2025-10-19_23-12-03,42,0.69,0.69,0.69,0.69,0.7,0.67
+baseline_fe_on,2025-10-20_22-51-45,2025-10-20_23-01-34,42,0.76,0.76,0.77,0.76,0.85,0.67
+solid_fe_off,2025-10-22_01-26-22,2025-10-22_01-30-23,42,0.76,0.75,0.79,0.76,0.93,0.59
+solid_fe_on,2025-10-22_02-19-11,2025-10-22_02-26-00,42,0.8,0.8,0.8,0.8,0.85,0.74

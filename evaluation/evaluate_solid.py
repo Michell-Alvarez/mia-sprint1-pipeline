@@ -6,13 +6,41 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.metrics import classification_report, precision_recall_fscore_support, confusion_matrix
-
+import argparse
 from models.cnn3d_model_solid import ViolenceDetector, ViolenceDataset, cargar_datos_desde_directorio
 
-
+'''
 # Rutas base
 current_dir = os.path.dirname(os.path.abspath(__file__))
 config_path = os.path.join(current_dir, '..', 'configs', 'config_solid.yaml')
+'''
+
+# Rutas base
+'''
+parser = argparse.ArgumentParser()
+parser.add_argument('--mode', type=str, default='fe_off', choices=['fe_off', 'fe_on'])
+args = parser.parse_args()
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+config_path = os.path.join(current_dir, '..', 'configs', f'config_solid_{args.mode}.yaml')
+'''
+
+# Crear un único parser
+parser = argparse.ArgumentParser()
+
+# Agregar ambos argumentos al mismo parser
+parser.add_argument('--mode', type=str, default='fe_off', choices=['fe_off', 'fe_on'],
+                    help="Modo de ejecución: con o sin feature engineering")
+parser.add_argument('--model', type=str, default='baseline', choices=['baseline', 'solid'],
+                    help="Modelo a ejecutar: baseline o solid")
+
+# Parsear argumentos una sola vez
+args = parser.parse_args()
+
+# Construir la ruta del archivo de configuración
+current_dir = os.path.dirname(os.path.abspath(__file__))
+config_path = os.path.join(current_dir, '..', 'configs', f'config_{args.model}_{args.mode}.yaml')
+
 
 # ---------- Utilidades ----------
 def set_seed(seed:int):
@@ -23,7 +51,7 @@ def set_seed(seed:int):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
-def resolve_run_dir(config, model_name:str):
+def resolve_run_dir(config, model_fe:str):
     """
     Prioriza:
     1) config['paths']['run_root'] si viene desde el entrenamiento,
@@ -55,12 +83,12 @@ def resolve_run_dir(config, model_name:str):
             
     # 3)
     base_out = Path(config.get('paths', {}).get('base_outputs', 'outputs'))
-    latest = base_out / model_name / "latest"
+    latest = base_out / model_fe / "latest"
     if latest.exists():
         return latest.resolve()
 
     # 4)
-    model_out = base_out / model_name
+    model_out = base_out / model_fe
     if model_out.exists():
         runs = sorted([p for p in model_out.iterdir() if p.is_dir()], reverse=True)
         if runs:
@@ -94,10 +122,13 @@ def evaluate_model():
     # Lee semilla y modelo desde config
     seed = int(config.get('experiment', {}).get('seed', 42))
     model_name = config.get('experiment', {}).get('model', 'solid')  # 'baseline' | 'solid' ...
+    mode_fe = config.get('experiment', {}).get('mode', 'fe_off')  # "fe_off" o "fe_on"
+    model_fe=model_name+'_'+mode_fe
+    print(model_fe)
     set_seed(seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # Resolver carpeta del run a evaluar
-    run_dir = resolve_run_dir(config, model_name)
+    run_dir = resolve_run_dir(config, model_fe)
     checkpoints_dir = run_dir / "models"
     best_model_path = checkpoints_dir / "best_model.pth"
     if not best_model_path.exists():
@@ -158,7 +189,7 @@ def evaluate_model():
     print(report)
     print(f"Exactitud: {accuracy:.4f} | F1 (weighted): {f1_w:.4f} | Precisión (weighted): {precision:.4f}")
     print(f"Sensibilidad: {sensitivity:.4f} | Especificidad: {specificity:.4f}")
-    print(f"[INFO] model={model_name} seed={seed} run={run_dir.name} eval_run={eval_run_id}")
+    print(f"[INFO] model={model_fe} seed={seed} run={run_dir.name} eval_run={eval_run_id}")
 
     # Guardar artefactos de evaluación dentro del run evaluado
     plot_confusion_matrix(cm, class_names, save_path=plots_dir / "confusion_matrix.png")
@@ -181,7 +212,7 @@ def evaluate_model():
         'specificity': specificity,
         'sensitivity': sensitivity,
         'seed': seed,
-        'model_name': model_name,
+        'model_name': model_fe,
         'train_run_id': run_dir.name,
         'eval_run_id': eval_run_id
     }])

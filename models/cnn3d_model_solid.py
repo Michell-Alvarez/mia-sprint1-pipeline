@@ -3,6 +3,7 @@ import cv2
 import random
 import torch
 import numpy as np
+from sklearn.model_selection import train_test_split
 from torch import nn
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
@@ -162,6 +163,7 @@ def build_dataloaders(cfg: Dict[str, Any]):
     """
     Construye DataLoaders de train/val usando directorios del YAML.
     """
+
     clip_len = cfg['data']['clip_len']
     frame_size = cfg['data']['frame_size']
     batch_size = cfg['training']['batch_size']
@@ -172,12 +174,13 @@ def build_dataloaders(cfg: Dict[str, Any]):
     #val_paths, val_labels = cargar_datos_desde_directorio(cfg['data']['test_dir'])
     train_paths_all, train_labels_all = cargar_datos_desde_directorio(cfg['data']['train_dir'])
   
-    # 🔹 Dividir 80% entrenamiento / 20% validación
+       
     train_paths, val_paths, train_labels, val_labels = train_test_split(
         train_paths_all,
         train_labels_all,
-        test_size=0.2,
+        test_size=0.15,
         stratify=train_labels_all,   # mantiene balance de clases
+        shuffle=True, 
         random_state=42              # para reproducibilidad
     )
 
