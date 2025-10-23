@@ -177,11 +177,12 @@ robo_armado_pipeline/
 
 Para ejecutar el pipeline, primero instale las dependencias listadas en el archivo requirements.txt. Luego, ubicándose en la carpeta robo_armado_pipeline/, ejecute el script run_pipeline.sh para iniciar el proceso, los parámetros para su ejecución son:
 
+```
 ./run_pipeline.sh fe_off baseline
 ./run_pipeline.sh fe_on baseline
 ./run_pipeline.sh fe_off solid
 ./run_pipeline.sh fe_on solid
-
+```
 
 ## Resultados esperados: 
 
