@@ -9,16 +9,6 @@ from sklearn.metrics import classification_report, precision_recall_fscore_suppo
 import argparse
 from models.cnn3d_model_baseline import Baseline3DCNN, VideoDataset
 
-# Rutas base
-'''
-parser = argparse.ArgumentParser()
-parser.add_argument('--mode', type=str, default='fe_off', choices=['fe_off', 'fe_on'])
-args = parser.parse_args()
-
-current_dir = os.path.dirname(os.path.abspath(__file__))
-config_path = os.path.join(current_dir, '..', 'configs', f'config_baseline_{args.mode}.yaml')
-'''
-
 # Crear un único parser
 parser = argparse.ArgumentParser()
 
@@ -34,7 +24,6 @@ args = parser.parse_args()
 # Construir la ruta del archivo de configuración
 current_dir = os.path.dirname(os.path.abspath(__file__))
 config_path = os.path.join(current_dir, '..', 'configs', f'config_{args.model}_{args.mode}.yaml')
-
 
 # ---------- Utilidades ----------
 def set_seed(seed:int):

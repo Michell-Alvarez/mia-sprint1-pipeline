@@ -7,11 +7,6 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import argparse
 
-'''
-# Usar ruta absoluta o encontrar la ruta correcta
-current_dir = os.path.dirname(os.path.abspath(__file__))
-config_path = os.path.join(current_dir, '..', 'configs', 'config.yaml')
-'''
 # Crear un único parser
 parser = argparse.ArgumentParser()
 
@@ -28,9 +23,6 @@ args = parser.parse_args()
 current_dir = os.path.dirname(os.path.abspath(__file__))
 config_path = os.path.join(current_dir, '..', 'configs', f'config_{args.model}_{args.mode}.yaml')
 
-print(f"Configuración usada: {config_path}")
-
-
 # Ahora cargar la configuración
 with open(config_path, 'r') as f:
     config = yaml.safe_load(f)
@@ -42,7 +34,6 @@ classes = config['data']['classes']
 #print("Dataset root:", dataset_root)
 print("Test directory:", test_dir)
 print("Classes:", classes)
-
 
 # ---------- 1. Información general del dataset ----------
 # Estructura: dataset_root/class_name/*.mp4
@@ -71,7 +62,6 @@ for cls in classes_test:
 
         duration = frame_count / fps if fps > 0 else 0
         data_info_test.append([cls, video_path, frame_count, fps, width, height, duration])
-
         cap.release()
         
 df_test = pd.DataFrame(data_info_test, columns=["class", "video_path", "frames", "fps", "width", "height", "duration"])

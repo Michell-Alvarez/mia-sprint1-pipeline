@@ -7,19 +7,6 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import argparse
 
-'''
-# Usar ruta absoluta o encontrar la ruta correcta
-current_dir = os.path.dirname(os.path.abspath(__file__))
-config_path = os.path.join(current_dir, '..', 'configs', 'config.yaml')
-
-parser = argparse.ArgumentParser()
-parser.add_argument('--mode', type=str, default='fe_off', choices=['fe_off', 'fe_on'])
-args = parser.parse_args()
-
-current_dir = os.path.dirname(os.path.abspath(__file__))
-config_path = os.path.join(current_dir, '..', 'configs', f'config_baseline_{args.mode}.yaml')
-'''
-
 # Crear un único parser
 parser = argparse.ArgumentParser()
 
@@ -35,9 +22,6 @@ args = parser.parse_args()
 # Construir la ruta del archivo de configuración
 current_dir = os.path.dirname(os.path.abspath(__file__))
 config_path = os.path.join(current_dir, '..', 'configs', f'config_{args.model}_{args.mode}.yaml')
-
-print(f"Configuración usada: {config_path}")
-
 
 # Ahora cargar la configuración
 with open(config_path, 'r') as f:
@@ -100,13 +84,11 @@ print("Resumen general de videos (train + test):")
 print(df_all.head())
 print(f"Total videos: {len(df_all)} (train={len(df_all[df_all.split=='train'])}, test={len(df_all[df_all.split=='test'])})")
 
-
 # 🔹 Redondear la columna 'duration' a 2 decimales
 df_all["duration"] = df_all["duration"].round(2)
 
 # Guardar a CSV
 df_all.to_csv("eda/metadata/train_test_videos.csv", index=False)
-
 
 print("########################################################################################################################")
 # ---------- 2. Distribución de clases ----------

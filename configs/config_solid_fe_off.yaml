@@ -20,7 +20,6 @@ data:
   clip_len: 16 #num_frames: 16      # número de frames por video
   augment: true
   
-
 # ============================
 # Parámetros de entrenamiento
 # ============================
@@ -57,12 +56,6 @@ paths:
   test_index: "data/test_index.csv"
   checkpoints: "checkpoints"      # se sobrescribirá dinámicamente por run_id
   log_txt: "logs/training.log"        # idem 
-  #run_root: "outputs/baseline/2025-10-05_13-13-39"   # comenta si no es fijo
-  #best_ckpt: "outputs/best_model.pth"
-
-  
-
-
-  
+ 
 
   

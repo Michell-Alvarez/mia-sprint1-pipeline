@@ -1,7 +1,7 @@
 ## Título y descripción breve
 
 **Nombre del proyecto:** 
-Detección de violencia armada en video vigilancia usando una arquitectura híbrida 3DCNN
+Detección de violencia armada en video vigilancia usando una arquitectura híbrida 3DCNN.
 
 **Objetivo:** 
 Desarrollar e implementar un sistema integral que, mediante un modelo híbrido **3DCNN** y una interfaz web, detecte automáticamente **violencia armada** en videos para su **monitoreo en tiempo real**.
@@ -50,7 +50,7 @@ pip install -r requirements.txt
 
 
 ## Estructura del repositorio
-
+```
 robo_armado_pipeline/
 │
 ├── configs/

@@ -47,11 +47,4 @@ paths:
   test_index: "data/test_index.csv"
   checkpoints: "checkpoints"      # se sobrescribirá dinámicamente por run_id
   logs: "logs/training.log"        # idem 
-  #run_root: "outputs/baseline/2025-10-05_13-13-39"   # comenta si no es fijo
-  
-  
 
-
-  
-
-  

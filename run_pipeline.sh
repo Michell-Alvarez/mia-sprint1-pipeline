@@ -45,7 +45,7 @@ run_pipeline_steps() {
     echo "Paso 10: Evaluando modelo..."
     python -m evaluation.evaluate_${MODEL} --model "$MODEL" --mode "$MODE"
     
-    echo "Paso 11: Genera métricas para los modelos baseline y solid, tanto con como sin feature engineering..."
+    echo "Paso 11: Genera métricas para los modelos baseline y solid..."
     python tools/comparar_modelos.py --base-dir outputs    
     
 }

@@ -14,19 +14,6 @@ from cnn3d_model_solid import (
     ViolenceDetector
 )
 
-'''
-# Usar ruta absoluta o encontrar la ruta correcta
-current_dir = os.path.dirname(os.path.abspath(__file__))
-config_path = os.path.join(current_dir, '..', 'configs', 'config_solid.yaml')
-
-parser = argparse.ArgumentParser()
-parser.add_argument('--mode', type=str, default='fe_off', choices=['fe_off', 'fe_on'])
-args = parser.parse_args()
-
-current_dir = os.path.dirname(os.path.abspath(__file__))
-config_path = os.path.join(current_dir, '..', 'configs', f'config_solid_{args.mode}.yaml')
-'''
-
 # Crear un único parser
 parser = argparse.ArgumentParser()
 
@@ -101,7 +88,6 @@ def main():
     logger.info(f"Iniciando entrenamiento en {device} | model={model_fe} | seed={seed} | run_id={run_id}")
     print(f"[INFO] model={model_fe} seed={seed} run_id={run_id} out={paths['run_root']}")
     
-
     print(f"Dispositivo: {device}")
 
     # --- Datos ---

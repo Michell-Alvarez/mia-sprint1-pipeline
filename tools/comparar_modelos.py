@@ -482,7 +482,6 @@ def main():
 
     table = table.reindex(columns=ordered_cols)
 
-
     # agregar columna con ruta del run (para rastreabilidad)
     run_col = []
     for v in table["variant"] if not table.empty and "variant" in table.columns else []:
@@ -526,7 +525,6 @@ def main():
     logs_csv_path = out_dir / "experimento_entrenamiento_consolidado.csv"
     if not df_logs.empty:
         df_logs.to_csv(logs_csv_path, index=False)
-
 
     # generar grilla de CM opcional
     cm_paths = {v: artifacts[v].get("confusion_png") for v in artifacts}

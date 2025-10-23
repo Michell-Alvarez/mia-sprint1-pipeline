@@ -4,8 +4,6 @@ import yaml
 import os
 import pandas as pd
 import argparse
-# Usar ruta absoluta o encontrar la ruta correcta
-
 
 # Crear un único parser
 parser = argparse.ArgumentParser()

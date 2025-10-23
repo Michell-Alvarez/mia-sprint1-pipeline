@@ -9,22 +9,6 @@ from sklearn.metrics import classification_report, precision_recall_fscore_suppo
 import argparse
 from models.cnn3d_model_solid import ViolenceDetector, ViolenceDataset, cargar_datos_desde_directorio
 
-'''
-# Rutas base
-current_dir = os.path.dirname(os.path.abspath(__file__))
-config_path = os.path.join(current_dir, '..', 'configs', 'config_solid.yaml')
-'''
-
-# Rutas base
-'''
-parser = argparse.ArgumentParser()
-parser.add_argument('--mode', type=str, default='fe_off', choices=['fe_off', 'fe_on'])
-args = parser.parse_args()
-
-current_dir = os.path.dirname(os.path.abspath(__file__))
-config_path = os.path.join(current_dir, '..', 'configs', f'config_solid_{args.mode}.yaml')
-'''
-
 # Crear un único parser
 parser = argparse.ArgumentParser()
 
@@ -40,7 +24,6 @@ args = parser.parse_args()
 # Construir la ruta del archivo de configuración
 current_dir = os.path.dirname(os.path.abspath(__file__))
 config_path = os.path.join(current_dir, '..', 'configs', f'config_{args.model}_{args.mode}.yaml')
-
 
 # ---------- Utilidades ----------
 def set_seed(seed:int):
@@ -59,7 +42,6 @@ def resolve_run_dir(config, model_fe:str):
     3) symlink 'outputs/<model_name>/latest',
     4) último directorio por timestamp en 'outputs/<model_name>/*'
     """
-
 
     # 1) run_root
     raw_rr = config.get('paths', {}).get('run_root', None)
@@ -137,14 +119,11 @@ def evaluate_model():
     eval_run_id, eval_root = make_eval_dirs(run_dir)
     plots_dir = eval_root / "plots"
     metrics_dir = eval_root / "metrics"
-    print(plots_dir)
-    print(metrics_dir)
     # Cargar modelo y pesos
     model = ViolenceDetector().to(device)
     state_dict = torch.load(str(best_model_path), map_location=device)
     model.load_state_dict(state_dict)
     model.eval()
-    print("g")
 
     # Dataset de test (sin aleatoriedad)
     val_paths, val_labels = cargar_datos_desde_directorio(config['data']['test_dir'])

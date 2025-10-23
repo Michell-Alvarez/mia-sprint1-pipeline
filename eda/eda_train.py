@@ -7,11 +7,6 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import argparse
 
-'''
-# Usar ruta absoluta o encontrar la ruta correcta
-current_dir = os.path.dirname(os.path.abspath(__file__))
-config_path = os.path.join(current_dir, '..', 'configs', 'config.yaml')
-'''
 # Crear un único parser
 parser = argparse.ArgumentParser()
 
@@ -42,7 +37,6 @@ classes = config['data']['classes']
 print("Train directory:", train_dir)
 print("Classes:", classes)
 
-
 # ---------- 1. Información general del dataset ----------
 # Estructura: dataset_root/class_name/*.mp4
 
@@ -70,9 +64,7 @@ for cls in classes:
 
         duration = frame_count / fps if fps > 0 else 0
         data_info_train.append([cls, video_path, frame_count, fps, width, height, duration])
-
         cap.release()
-
        
 # Configurar pandas para mostrar todas las columnas sin truncamiento
 pd.set_option('display.max_columns', None)  # Mostrar todas las columnas
@@ -92,7 +84,6 @@ df_train["duration"] = df_train["duration"].round(2)
 
 # Guardar a CSV
 df_train.to_csv("eda/metadata/train_videos.csv", index=False)
-
 
 print("########################################################################################################################")
 # ---------- 2. Distribución de clases ----------
@@ -133,5 +124,4 @@ plt.xlabel("FPS")
 plt.savefig("eda/plots/distribucion_de_fps_train.png", dpi=300, bbox_inches="tight")
 #plt.show()
 plt.close()  # <- Cierra la figura, así no se renderiza en pantalla
-
 

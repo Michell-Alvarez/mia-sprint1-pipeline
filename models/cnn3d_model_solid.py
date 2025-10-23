@@ -168,12 +168,7 @@ def build_dataloaders(cfg: Dict[str, Any]):
     frame_size = cfg['data']['frame_size']
     batch_size = cfg['training']['batch_size']
     num_workers = cfg['training']['num_workers']
-    #augment = cfg['data'].get('augment', True)
-
-    #train_paths, train_labels = cargar_datos_desde_directorio(cfg['data']['train_dir'])
-    #val_paths, val_labels = cargar_datos_desde_directorio(cfg['data']['test_dir'])
     train_paths_all, train_labels_all = cargar_datos_desde_directorio(cfg['data']['train_dir'])
-  
        
     train_paths, val_paths, train_labels, val_labels = train_test_split(
         train_paths_all,

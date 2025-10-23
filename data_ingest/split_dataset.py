@@ -3,11 +3,6 @@ import yaml
 import os
 import argparse
 
-'''
-# Usar ruta absoluta o encontrar la ruta correcta
-current_dir = os.path.dirname(os.path.abspath(__file__))
-config_path = os.path.join(current_dir, '..', 'configs', 'config.yaml')
-'''
 # Crear un único parser
 parser = argparse.ArgumentParser()
 

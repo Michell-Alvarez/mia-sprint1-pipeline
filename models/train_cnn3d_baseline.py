@@ -7,8 +7,6 @@ from datetime import datetime
 import argparse
 from cnn3d_model_baseline import Baseline3DCNN, VideoDataset
 
-# Rutas
-
 # Crear un único parser
 parser = argparse.ArgumentParser()
 
