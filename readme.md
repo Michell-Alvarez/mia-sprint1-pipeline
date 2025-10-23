@@ -171,7 +171,7 @@ robo_armado_pipeline/
 ├── readme.md	          # Archivo readme.md
 ├── requirements.txt	  # Listado de dependencias utilizadas en el proyecto.
 └── run_pipeline.sh		  # Ejecución del pipeline completo
-
+```
 
 ## Cómo correr el pipeline:
 
