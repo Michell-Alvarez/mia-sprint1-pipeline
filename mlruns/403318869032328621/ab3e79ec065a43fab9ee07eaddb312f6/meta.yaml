@@ -1,0 +1,15 @@
+artifact_uri: file:///mnt/nvme0n1p4/UNI/Maestría en Inteligencia Artificial/Ciclo
+  IV/MIA-403 Proyecto de investigación II/Sprint 3/robo_armado_pipeline/mlruns/403318869032328621/ab3e79ec065a43fab9ee07eaddb312f6/artifacts
+end_time: 1761869096104
+entry_point_name: ''
+experiment_id: '403318869032328621'
+lifecycle_stage: active
+run_id: ab3e79ec065a43fab9ee07eaddb312f6
+run_name: solid_fe_on_3
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1761868521458
+status: 3
+tags: []
+user_id: michell-alvarez

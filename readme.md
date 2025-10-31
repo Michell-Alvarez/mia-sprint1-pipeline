@@ -54,10 +54,10 @@ pip install -r requirements.txt
 robo_armado_pipeline/
 │
 ├── configs/
-│   ├──  config_baseline_fe_off.yaml    # Hiperparámetros y rutas modelo base sin feature engineering
-│   ├──  config_baseline_fe_on.yaml     # Hiperparámetros y rutas modelo base con feature engineering
-│   ├──  config_solid_fe_off.yaml       # Hiperparámetros y rutas modelo sólido sin feature engineering
-│   └──  config_solid_fe_on.yaml        # Hiperparámetros y rutas modelo sólido con feature engineering
+│   ├──  config_baseline_fe_off.yaml    # Hiperparámetros y rutas modelo CNN base sin feature engineering
+│   ├──  config_baseline_fe_on.yaml     # Hiperparámetros y rutas modelo CNN base con feature engineering
+│   ├──  config_solid_fe_off.yaml       # Hiperparámetros y rutas modelo CNN+Atención temporal sin feature engineering
+│   └──  config_solid_fe_on.yaml        # Hiperparámetros y rutas modelo CNN+Atención temporal con feature engineering
 │
 ├── data/
 │   ├── test_index.csv            # Índice de videos con ruta, etiqueta, clase y partición de datos de prueba
@@ -94,79 +94,51 @@ robo_armado_pipeline/
 │   └── eda_train_test.py		  # Resumen general videos de entrenamiento+prueba, distribución de clases, propiedades técnicas, histogramas de datos de entrenamiento+prueba
 │
 ├── evaluation/
-│   ├── evaluate_baseline.py               # Evalúa el modelo base almacenado con el conjunto de prueba
-│   └── evaluate_solid.py         # Evalúa el modelo sólido almacenado con el conjunto de prueba
+│   ├── evaluate_baseline.py      # Evalúa el modelo CNN base almacenado con el conjunto de prueba
+│   └── evaluate_solid.py         # Evalúa el modelo CNN+Atención temporal almacenado con el conjunto de prueba
+│
+├── mlruns/                       # Registro local de experimentos y artefactos de MLflow
 │
 ├── models/
-│   ├── cnn3d_model_baseline.py            # Red neuronal 3D modelo base
-│   ├── cnn3d_model_solid.py      # Red neuronal 3D modelo sólido
-│   ├── train_cnn3d_baseline.py            # Entrenamiento modelo base
-│   └── train_cnn3d_solid.py      # Entrenamiento modelo sólido
+│   ├── cnn3d_model_baseline.py   # Red neuronal 3D modelo CNN base
+│   ├── cnn3d_model_solid.py      # Red neuronal 3D modelo CNN+Atención temporal
+│   ├── train_cnn3d_baseline.py   # Entrenamiento modelo CNN base
+│   └── train_cnn3d_solid.py      # Entrenamiento modelo CNN+Atención temporal
 │
+# Estructura general de resultados (aplicable a cualquier variante de modelo)
+# -------------------------------------------------------------------------
+# Los parámetros principales son:
+# - baseline_fe_off_0:  Modelo CNN base sin feature engineering
+# - baseline_fe_on_1:   Modelo CNN base con feature engineering (color+textura)
+# - baseline_fe_on_2:   Modelo CNN base con feature engineering (color)
+# - baseline_fe_on_3:   Modelo CNN base con feature engineering (textura)
+# - solid_fe_off_0:     Modelo CNN+Atención temporal sin feature engineering
+# - solid_fe_on_1:      Modelo CNN+Atención temporal con feature engineering (color+textura)
+# - solid_fe_on_2:      Modelo CNN+Atención temporal con feature engineering (color)
+# - solid_fe_on_3:      Modelo CNN+Atención temporal con feature engineering (textura)
+#
+# Dentro de cada modelo se generan carpetas con estructura año-mes-día-hora-minuto-segundo,
+# que contienen los resultados de evaluación, logs, métricas y el mejor modelo guardado.
 ├── outputs/
-│   ├── baseline_fe_off/          # Ruta métricas para el modelo base sin feature engineering
-│   │   ├── yyyy-mm-dd_hh-mm-ss   # Ruta con estructura año-mes-día-hora-minuto-segundos
-│   │   |   ├── eval
-│   │   │   |   ├── yyyy-mm-dd_hh-mm-ss
-|   │   │   │   |   ├── metrics 
-|   |   │   │   │   |   ├──  detailed_results.csv   # Resultados de predicción por clase con probabilidades asociadas del conjunto de prueba
-|   |   │   │   │   |   └──  model_metrics.csv      # Métricas globales del modelo: accuracy, precision, recall y F1-score del conjunto de prueba
-|   │   │   │   |   ├── plots
-|   |   |   |   │   │   └── confusion_matrix.png    # Matriz de confusión del modelo del conjunto de prueba
-│   │   |   ├── logs
-|   |   │   │   └── training.log    # Log de entrenamiento: loss y accuracy por época
-│   │   |   ├── metrics
-|   |   │   │   └── experiment_summary.log    # modelo,	run_id,	seed y mejor valor de accuracy
-│   │   |   └── models
-|   |   │   │   └── best_model.pth  # Mejor modelo guardado para el baseline_fe_off
-│   ├── baseline_fe_on/          # Ruta métricas para el modelo base con feature engineering
-│   │   ├── yyyy-mm-dd_hh-mm-ss   # Ruta con estructura año-mes-día-hora-minuto-segundos
-│   │   |   ├── eval
-│   │   │   |   ├── yyyy-mm-dd_hh-mm-ss
-|   │   │   │   |   ├── metrics 
-|   |   │   │   │   |   ├──  detailed_results.csv   # Resultados de predicción por clase con probabilidades asociadas del conjunto de prueba
-|   |   │   │   │   |   └──  model_metrics.csv      # Métricas globales del modelo: accuracy, precision, recall y F1-score del conjunto de prueba
-|   │   │   │   |   ├── plots
-|   |   |   |   │   │   └── confusion_matrix.png    # Matriz de confusión del modelo del conjunto de prueba
-│   │   |   ├── logs
-|   |   │   │   └── training.log    # Log de entrenamiento: loss y accuracy por época
-│   │   |   ├── metrics
-|   |   │   │   └── experiment_summary.log    # modelo,	run_id,	seed y mejor valor de accuracy
-│   │   |   └── models
-|   |   │   │   └── best_model.pth  # Mejor modelo guardado para el baseline_fe_on
-│   ├── solid_fe_off/          # Ruta métricas para el modelo sólido sin feature engineering
-│   │   ├── yyyy-mm-dd_hh-mm-ss   # Ruta con estructura año-mes-día-hora-minuto-segundos
-│   │   |   ├── eval
-│   │   │   |   ├── yyyy-mm-dd_hh-mm-ss
-|   │   │   │   |   ├── metrics 
-|   |   │   │   │   |   ├──  detailed_results.csv   # Resultados de predicción por clase con probabilidades asociadas del conjunto de prueba
-|   |   │   │   │   |   └──  model_metrics.csv      # Métricas globales del modelo: accuracy, precision, recall y F1-score del conjunto de prueba
-|   │   │   │   |   ├── plots
-|   |   |   |   │   │   └── confusion_matrix.png    # Matriz de confusión del modelo del conjunto de prueba
-│   │   |   ├── logs
-|   |   │   │   └── training.log    # Log de entrenamiento: loss y accuracy por época
-│   │   |   ├── metrics
-|   |   │   │   └── experiment_summary.log    # modelo,	run_id,	seed y mejor valor de accuracy
-│   │   |   └── models
-|   |   │   │   └── best_model.pth  # Mejor modelo guardado para el solid_fe_off
-│   ├── solid_fe_on/          # Ruta métricas para el modelo sólido con feature engineering
-│   │   ├── yyyy-mm-dd_hh-mm-ss   # Ruta con estructura año-mes-día-hora-minuto-segundos
-│   │   |   ├── eval
-│   │   │   |   ├── yyyy-mm-dd_hh-mm-ss
-|   │   │   │   |   ├── metrics 
-|   |   │   │   │   |   ├──  detailed_results.csv   # Resultados de predicción por clase con probabilidades asociadas del conjunto de prueba
-|   |   │   │   │   |   └──  model_metrics.csv      # Métricas globales del modelo: accuracy, precision, recall y F1-score del conjunto de prueba
-|   │   │   │   |   ├── plots
-|   |   |   |   │   │   └── confusion_matrix.png    # Matriz de confusión del modelo del conjunto de prueba
-│   │   |   ├── logs
-|   |   │   │   └── training.log    # Log de entrenamiento: loss y accuracy por época
-│   │   |   ├── metrics
-|   |   │   │   └── experiment_summary.log    # modelo,	run_id,	seed y mejor valor de accuracy
-│   │   |   └── models
-|   |   │   │   └── best_model.pth  # Mejor modelo guardado para el solid_fe_on
+│   ├── baseline_fe_off/          # Ruta de ejemplo (idéntica estructura para los demás modelos)
+│   │   ├── yyyy-mm-dd_hh-mm-ss   # Carpeta creada automáticamente por fecha y hora de ejecución
+│   │   │   ├── eval/
+│   │   │   │   ├── yyyy-mm-dd_hh-mm-ss/
+│   │   │   │   │   ├── metrics/
+│   │   │   │   │   │   ├── detailed_results.csv     # Predicciones por clase y probabilidades
+│   │   │   │   │   │   └── model_metrics.csv        # Accuracy, precisión, recall, F1-score (test)
+│   │   │   │   │   ├── plots/
+│   │   │   │   │   │   └── confusion_matrix.png     # Matriz de confusión del conjunto de prueba
+│   │   │   ├── logs/
+│   │   │   │   └── training.log                     # Registro de entrenamiento: loss y accuracy por época
+│   │   │   ├── metrics/
+│   │   │   │   └── experiment_summary.log           # Modelo, run_id, seed y mejor accuracy obtenido
+│   │   │   └── models/
+│   │   │       └── best_model.pth                   # Mejor modelo guardado (según validación)
 │
 ├── tools/
-|   |   └── comparar_modelos.py     # Generar las métricas para los modelos base y sólido
+|   |   ├── comparar_modelos.py     # Generar las métricas para los modelos CNN base y CNN+Atención temporal
+|   |   └── mlflow_utils.py         # Funciones utilitarias para la carga, registro y gestión de experimentos con **MLflow**
 │
 ├── readme.md	          # Archivo readme.md
 ├── requirements.txt	  # Listado de dependencias utilizadas en el proyecto.

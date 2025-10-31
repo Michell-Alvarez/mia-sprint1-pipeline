@@ -11,7 +11,8 @@ parser.add_argument('--mode', type=str, default='fe_off', choices=['fe_off', 'fe
                     help="Modo de ejecución: con o sin feature engineering")
 parser.add_argument('--model', type=str, default='baseline', choices=['baseline', 'solid'],
                     help="Modelo a ejecutar: baseline o solid")
-
+parser.add_argument('--fe', type=str, default='1', choices=['0', '1', '2', '3'],
+                    help="Tipo de FE, 0: sin features | 1: combined_features | 2: color_features | 3: lbp_features")
 # Parsear argumentos una sola vez
 args = parser.parse_args()
 
@@ -20,7 +21,8 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 config_path = os.path.join(current_dir, '..', 'configs', f'config_{args.model}_{args.mode}.yaml')
 
 print(f"Configuración usada: {config_path}")
-
+fe = args.fe
+print(fe)
 def create_video_index(config_path=config_path):
     """Crea un índice de todos los videos basado en tu estructura de carpetas existente"""
     
@@ -30,7 +32,8 @@ def create_video_index(config_path=config_path):
     data = []
     
     # Procesar carpeta de TRAIN
-    train_dir = config['data']['train_dir']
+    #train_dir = config['data']['train_dir']
+    train_dir = config['paths'][f"fe{fe}"]
     print(f"Escaneando carpeta de entrenamiento: {train_dir}")
     
     for class_name in config['data']['classes']:

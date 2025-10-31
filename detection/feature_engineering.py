@@ -58,29 +58,45 @@ def extract_combined_features(roi):
     texture_features = extract_lbp_features(roi)
     return {**color_features, **texture_features}
 
-def is_likely_gun(yolo_detection, frame_region):
-    """Verifica si la detección de YOLO tiene características de pistola"""
+
+def is_likely_gun(frame_region, fe=1):
+    """
+    Verifica si la detección tiene características de pistola según el modo:
+    fe=1 → color + textura (combinado)
+    fe=2 → solo color
+    fe=3 → solo textura
+    """
     if frame_region.size == 0:
         return False
-        
-    features = extract_combined_features(frame_region)
-    
-    print(f"Metálico: {features['metallic_color_ratio']:.3f}, "
-          f"Negro: {features['black_color_ratio']:.3f}, "
-          f"Uniformidad_color: {features['color_uniformity']:.3f}, "
-          f"LBP_Uniformidad: {features['lbp_uniformity']:.3f}, "
-          f"LBP_Contraste: {features['lbp_contrast']:.3f}")
-    
-    color_ok = (features['metallic_color_ratio'] > 0.1 or features['black_color_ratio'] > 0.3)
-    texture_ok = (features['lbp_uniformity'] > 0.3)
-    
-    if not texture_ok:
-        print(f"   Textura rechazada: LBP_uniformity = {features['lbp_uniformity']:.3f} < 0.3")
-    
-    if color_ok and texture_ok:
-        print("DETECCIÓN CONFIRMADA (color + textura)")
-        return True
+
+    # Selección de características según modo
+    if fe == 1:
+        features = extract_combined_features(frame_region)
+        method = "COMBINADO"
+    elif fe == 2:
+        features = extract_gun_color_features(frame_region)
+        method = "SOLO COLOR"
+    elif fe == 3:
+        features = extract_lbp_features(frame_region)
+        method = "SOLO TEXTURA"
     else:
-        print(f"Detección rechazada - Color: {color_ok}, Textura: {texture_ok}")
-        return False
+        raise ValueError("Modo inválido: solo se acepta 1, 2 o 3")
+
+    print(f"\n[Modo {fe} - {method}]")
+
+    # Mostrar solo las métricas relevantes en cada modo
+    for k, v in features.items():
+        print(f"{k}: {v:.3f}")
+
+    # Reglas de decisión según modo
+    if fe == 1:
+        color_ok = (features['metallic_color_ratio'] > 0.1 or features['black_color_ratio'] > 0.3)
+        texture_ok = (features['lbp_uniformity'] > 0.3)
+        return color_ok and texture_ok
+
+    if fe == 2:
+        return (features['metallic_color_ratio'] > 0.1 or features['black_color_ratio'] > 0.35)
+
+    if fe == 3:
+        return (features['lbp_uniformity'] > 0.3)
 

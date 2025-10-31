@@ -8,13 +8,16 @@ from pathlib import Path
 from datetime import datetime
 import pandas as pd
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageOps
 import io
 import base64
 import textwrap
 import matplotlib.pyplot as plt
+import math
 
-VARIANTS = ["baseline_fe_off", "baseline_fe_on", "solid_fe_off", "solid_fe_on"]
+
+#VARIANTS = ["baseline_fe_off", "baseline_fe_on", "baseline_fe_on_2", "baseline_fe_on_3", "solid_fe_off", "solid_fe_on", "solid_fe_on_2", "solid_fe_on_3"]
+VARIANTS = ["baseline_fe_off_0", "baseline_fe_on_1", "baseline_fe_on_2", "baseline_fe_on_3", "solid_fe_off_0", "solid_fe_on_1", "solid_fe_on_2", "solid_fe_on_3"]
 
 TIMESTAMP_RE = re.compile(r"^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}$")
 
@@ -148,32 +151,70 @@ def unify_columns(dfs: dict[str, pd.DataFrame]) -> pd.DataFrame:
     out = out.reindex(columns=ordered)
     return out
 
+def _pad_to_square(img: Image.Image, size: int = 1024, color=(255, 255, 255)) -> Image.Image:
+    """
+    Ajusta la imagen a un lienzo cuadrado (size x size) conservando aspecto:
+    - Redimensiona para que quepa dentro de size x size
+    - Rellena con color para completar el cuadrado (padding)
+    """
+    img = ImageOps.contain(img, (size, size))               # mantiene aspecto dentro de size
+    # crear lienzo cuadrado y centrar
+    canvas = Image.new("RGB", (size, size), color=color)
+    off_x = (size - img.width)  // 2
+    off_y = (size - img.height) // 2
+    canvas.paste(img, (off_x, off_y))
+    return canvas
 
 def make_cm_grid_image(cm_paths: list[tuple[str, Path]], out_path: Path) -> Path | None:
-    """Crea una grilla 2x2 con las confusion_matrix.png disponibles."""
+    """Crea una grilla hasta 2x4 con las confusion_matrix.png disponibles, grandes y alineadas."""
     present = [(name, p) for name, p in cm_paths if p and p.exists()]
     if not present:
         return None
-    # armar figura hasta 2x2
-    n = min(4, len(present))
-    rows = 2
-    cols = 2
-    fig, axes = plt.subplots(rows, cols, figsize=(10, 10))
-    axes = axes.flatten()
-    for ax in axes:
-        ax.axis("off")
+
+    n = min(8, len(present))
+    cols = 4
+    rows = math.ceil(n / cols)
+
+    # Preprocesar imágenes: cuadradas y del mismo tamaño para evitar saltos verticales
+    processed = []
     for i in range(n):
         name, p = present[i]
         img = Image.open(p).convert("RGB")
-        axes[i].imshow(img)
-        axes[i].set_title(name, fontsize=11)
-        axes[i].axis("off")
-    fig.tight_layout()
+        img = _pad_to_square(img, size=1024, color=(255, 255, 255))
+        processed.append((name, img))
+
+    # Figura grande, con espaciado controlado y layout estable
+    fig, axes = plt.subplots(
+        rows, cols,
+        figsize=(28, 14) if rows == 2 else (28, 7),
+        constrained_layout=True,
+        gridspec_kw={"wspace": 0.02, "hspace": 0.08}
+    )
+
+    # axes siempre como array 1D
+    if rows * cols == 1:
+        axes = [axes]
+    else:
+        axes = axes.flatten()
+
+    # Limpiar todos los ejes
+    for ax in axes:
+        ax.set_axis_off()
+
+    # Pintar imágenes normalizadas
+    for i in range(n):
+        name, img = processed[i]
+        ax = axes[i]
+        ax.imshow(img, aspect="equal")
+        ax.set_title(name, fontsize=16, pad=8)
+        ax.set_axis_off()
+
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(out_path, dpi=180, bbox_inches="tight")
+    # Evitar bbox_inches="tight" porque comprime filas/columnas de forma desigual
+    fig.savefig(out_path, dpi=220)
     plt.close(fig)
     return out_path
-
+    
 # --------- Utilidades de plotting ---------
 def _safe_float(v):
     try:
@@ -190,10 +231,16 @@ def _annotate_bars(ax):
                         ha='center', va='bottom', fontsize=9, rotation=0)
 
 def _plot_metrics_heatmap(fig_path: Path, df: pd.DataFrame, index_col: str = "model_name"):
+    '''
     candidate_metrics = [
         "accuracy", "f1_weighted", "precision_weighted",
         "recall_weighted", "sensitivity", "specificity"
     ]
+    '''
+    candidate_metrics = [
+        "sensitivity", "f1_weighted", "accuracy"
+    ]
+    
     present = [m for m in candidate_metrics if m in df.columns]
     if not present or index_col not in df.columns:
         return False
@@ -206,12 +253,12 @@ def _plot_metrics_heatmap(fig_path: Path, df: pd.DataFrame, index_col: str = "mo
     data = df_plot[present].values.astype(float)
 
     fig, ax = plt.subplots(figsize=(1.2 * len(present) + 3, 0.8 * len(models) + 2))
-    im = ax.imshow(data, aspect="auto")
+    im = ax.imshow(data, aspect="auto", cmap="Blues")
     ax.set_xticks(np.arange(len(present)))
     ax.set_yticks(np.arange(len(models)))
     ax.set_xticklabels(present, rotation=30, ha="right")
     ax.set_yticklabels(models)
-    ax.set_title("Heatmap de métricas por modelo")
+    ax.set_title("Mapa de calor de métricas por modelo")
 
     for i in range(len(models)):
         for j in range(len(present)):
@@ -318,12 +365,29 @@ def build_html_report(dst_dir: Path, table: pd.DataFrame, cm_paths: dict[str, Pa
         html_rows.append(tbl.to_html(index=False, border=0, float_format=lambda x: f"{x:.2f}", escape=False))
     else:
         html_rows.append("<p><em>No se encontraron métricas para construir la tabla.</em></p>")
+    
+    # Diccionario con los nuevos nombres descriptivos
+    reemplazos = {
+        #"baseline_fe_off": "Modelo CNN base sin FE",
+        #"baseline_fe_on": "Modelo CNN base con FE (color+textura)",
+        "baseline_fe_off_0": "Modelo CNN base sin FE",
+        "baseline_fe_on_1": "Modelo CNN base con FE (color+textura)",
+        "baseline_fe_on_2": "Modelo CNN base con FE (color)",
+        "baseline_fe_on_3": "Modelo CNN base con FE (textura)",
+        "solid_fe_off_0": "Modelo CNN+Atención temporal sin FE",
+        "solid_fe_on_1": "Modelo CNN+Atención temporal con FE (color+textura)",
+        "solid_fe_on_2": "Modelo CNN+Atención temporal con FE (color)",
+        "solid_fe_on_3": "Modelo CNN+Atención temporal FE (textura)"
+    }
+
+    # Aplicar reemplazo directamente sobre tu DataFrame
+    table["model_name"] = table["model_name"].replace(reemplazos)
 
     # Gráfico de barras (test)
     if isinstance(table, pd.DataFrame) and not table.empty:
         bars_test_path = dst_dir / "metrics_bars_test.png"
-        test_metrics = ["accuracy", "f1_weighted", "precision_weighted",
-                        "recall_weighted", "sensitivity", "specificity"]
+        #test_metrics = ["accuracy", "f1_weighted", "precision_weighted","recall_weighted", "sensitivity", "specificity"]
+        test_metrics = ["sensitivity", "f1_weighted", "accuracy"]
         ok_bars_test = _plot_metrics_bars(
             bars_test_path, table, index_col="model_name",
             metric_cols=test_metrics, title="Barras comparativas (Test)"
@@ -413,7 +477,27 @@ def build_html_report(dst_dir: Path, table: pd.DataFrame, cm_paths: dict[str, Pa
         else:
             df_logs["_label"] = [f"exp_{i+1}" for i in range(len(df_logs))]
             label_col = "_label"
+        
+        # Diccionario con los nuevos nombres descriptivos
+        reemplazos = {
+            #"baseline_fe_off": "Modelo CNN base sin FE",
+            #"baseline_fe_on": "Modelo CNN base con FE (color+textura)",
+            "baseline_fe_off_0": "Modelo CNN base sin FE",
+            "baseline_fe_on_1": "Modelo CNN base con FE (color+textura)",
+            "baseline_fe_on_2": "Modelo CNN base con FE (color)",
+            "baseline_fe_on_3": "Modelo CNN base con FE (textura)",
+            "solid_fe_off_0": "Modelo CNN+Atención temporal sin FE",
+            "solid_fe_on_1": "Modelo CNN+Atención temporal con FE (color+textura)",
+            "solid_fe_on_2": "Modelo CNN+Atención temporal con FE (color)",
+            "solid_fe_on_3": "Modelo CNN+Atención temporal FE (textura)"
+        }
 
+        # Aplicar reemplazo directamente sobre tu DataFrame
+        df_logs["model_fe"] = df_logs["model_fe"].replace(reemplazos)
+        
+        # Cambiar el nombre de una columna
+        df_logs = df_logs.rename(columns={"model_fe": "model_name"})
+        label_col="model_name"
         # Detectar métricas disponibles (soporta 'best_val_acc')
         train_metrics = _autodetect_train_metrics(df_logs, label_col)
         bars_train_path = dst_dir / "metrics_bars_train.png"
@@ -470,6 +554,23 @@ def main():
         metrics_by_variant[v] = df
 
     table = unify_columns(metrics_by_variant)
+
+    # Diccionario con los nuevos nombres descriptivos
+    reemplazos = {
+        #"baseline_fe_off": "Modelo CNN base sin FE",
+        #"baseline_fe_on": "Modelo CNN base con FE (color+textura)",
+        "baseline_fe_off_0": "Modelo CNN base sin FE",
+        "baseline_fe_on_1": "Modelo CNN base con FE (color+textura)",
+        "baseline_fe_on_2": "Modelo CNN base con FE (color)",
+        "baseline_fe_on_3": "Modelo CNN base con FE (textura)",
+        "solid_fe_off_0": "Modelo CNN+Atención temporal sin FE",
+        "solid_fe_on_1": "Modelo CNN+Atención temporal con FE (color+textura)",
+        "solid_fe_on_2": "Modelo CNN+Atención temporal con FE (color)",
+        "solid_fe_on_3": "Modelo CNN+Atención temporal FE (textura)"
+    }
+
+    # Aplicar reemplazo directamente sobre tu DataFrame
+    table["model_name"] = table["model_name"].replace(reemplazos)
     
     # Reordenar columnas del DataFrame "table"
     desired_order = [
@@ -522,14 +623,49 @@ def main():
 
     df_logs = df_logs.rename(columns=rename_map)
 
+    # Diccionario con los nuevos nombres descriptivos
+    reemplazos = {
+        #"baseline_fe_off": "Modelo CNN base sin FE",
+        #"baseline_fe_on": "Modelo CNN base con FE (color+textura)",
+        "baseline_fe_off_0": "Modelo CNN base sin FE",
+        "baseline_fe_on_1": "Modelo CNN base con FE (color+textura)",
+        "baseline_fe_on_2": "Modelo CNN base con FE (color)",
+        "baseline_fe_on_3": "Modelo CNN base con FE (textura)",
+        "solid_fe_off_0": "Modelo CNN+Atención temporal sin FE",
+        "solid_fe_on_1": "Modelo CNN+Atención temporal con FE (color+textura)",
+        "solid_fe_on_2": "Modelo CNN+Atención temporal con FE (color)",
+        "solid_fe_on_3": "Modelo CNN+Atención temporal FE (textura)"
+    }
+
+    # Aplicar reemplazo directamente sobre tu DataFrame
+    df_logs["model_name"] = df_logs["model_name"].replace(reemplazos)
+    
     logs_csv_path = out_dir / "experimento_entrenamiento_consolidado.csv"
     if not df_logs.empty:
         df_logs.to_csv(logs_csv_path, index=False)
 
     # generar grilla de CM opcional
     cm_paths = {v: artifacts[v].get("confusion_png") for v in artifacts}
+
+    # Diccionario con los nuevos nombres
+    reemplazos = {
+        #'baseline_fe_off': 'Modelo CNN base sin FE',
+        #'baseline_fe_on': 'Modelo CNN base con FE (color+textura)',
+        'baseline_fe_off_0': 'Modelo CNN base sin FE',
+        'baseline_fe_on_1': 'Modelo CNN base con FE (color+textura)',
+        "baseline_fe_on_2": "Modelo CNN base con FE (color)",
+        "baseline_fe_on_3": "Modelo CNN base con FE (textura)",
+        "solid_fe_off_0": "Modelo CNN+Atención temporal sin FE",
+        "solid_fe_on_1": "Modelo CNN+Atención temporal con FE (color+textura)",
+        "solid_fe_on_2": "Modelo CNN+Atención temporal con FE (color)",
+        "solid_fe_on_3": "Modelo CNN+Atención temporal FE (textura)"
+    }
+
+    # Crear nuevo diccionario con los nombres actualizados
+    cm_paths_modificado = {reemplazos.get(k, k): v for k, v in cm_paths.items()}
     grid_path = out_dir / "grid_confusion_matrices.png"
-    grid_done = make_cm_grid_image(list(cm_paths.items()), grid_path)
+
+    grid_done = make_cm_grid_image(list(cm_paths_modificado.items()), grid_path)
 
     # reporte HTML embebiendo imágenes individuales; además el PNG de grilla (si existe) puede verse aparte
     build_html_report(out_dir, table, cm_paths, logs)

@@ -9,6 +9,16 @@ from sklearn.metrics import classification_report, precision_recall_fscore_suppo
 import argparse
 from models.cnn3d_model_solid import ViolenceDetector, ViolenceDataset, cargar_datos_desde_directorio
 
+# === MLflow utils ===
+import mlflow
+from tools.mlflow_utils import (
+    set_tracking,
+    start_run,
+    log_yaml_as_params_and_artifact,
+    log_artifacts_safely,
+    log_model_file,
+)
+
 # Crear un único parser
 parser = argparse.ArgumentParser()
 
@@ -17,7 +27,9 @@ parser.add_argument('--mode', type=str, default='fe_off', choices=['fe_off', 'fe
                     help="Modo de ejecución: con o sin feature engineering")
 parser.add_argument('--model', type=str, default='baseline', choices=['baseline', 'solid'],
                     help="Modelo a ejecutar: baseline o solid")
-
+parser.add_argument('--fe', type=str, default='1', choices=['0', '1', '2', '3'],
+                    help="Tipo de FE, 0: sin features | 1: combined_features | 2: color_features | 3: lbp_features")
+                    
 # Parsear argumentos una sola vez
 args = parser.parse_args()
 
@@ -101,12 +113,20 @@ def plot_confusion_matrix(cm, classes, save_path:Path):
 def evaluate_model():
     with open(config_path, 'r') as f:
         config = yaml.safe_load(f)
+    
+    # Experimento/Tracking desde config (con fallback)
+    mlflow_cfg = config.get('mlflow', {})
+    experiment_name = mlflow_cfg.get('experiment', 'RoboArmado-Eval-CNN3D–Atencion-Temporal')
+    tracking_uri = mlflow_cfg.get('tracking_uri', None)    
+    
+    
     # Lee semilla y modelo desde config
     seed = int(config.get('experiment', {}).get('seed', 42))
     model_name = config.get('experiment', {}).get('model', 'solid')  # 'baseline' | 'solid' ...
     mode_fe = config.get('experiment', {}).get('mode', 'fe_off')  # "fe_off" o "fe_on"
-    model_fe=model_name+'_'+mode_fe
-    print(model_fe)
+    fe = args.fe
+    model_fe=model_name+'_'+mode_fe+'_'+fe
+
     set_seed(seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # Resolver carpeta del run a evaluar
@@ -134,75 +154,115 @@ def evaluate_model():
                              batch_size=config['training']['batch_size'],
                              shuffle=False)
 
-    # Evaluación
-    all_preds, all_labels, all_probabilities = [], [], []
-    with torch.no_grad():
-        for inputs, labels in test_loader:
-            inputs, labels = inputs.to(device), labels.to(device)
-            outputs = model(inputs)
-            probabilities = torch.softmax(outputs, dim=1)
-            _, preds = torch.max(outputs, 1)
+    # === Inicializa MLflow y arranca run de EVALUACIÓN ===
+    set_tracking(experiment_name=experiment_name, tracking_uri=tracking_uri)
+    run_name = f"eval_{model_fe}_{eval_run_id}"
 
-            all_preds.extend(preds.cpu().numpy())
-            all_labels.extend(labels.cpu().numpy())
-            all_probabilities.extend(probabilities.cpu().numpy())
+    with start_run(run_name=run_name, tags={
+        "phase": "evaluation",
+        "eval_run_id": eval_run_id,
+        "train_run_id": run_dir.name,
+        "model": model_name,
+        "mode": mode_fe,
+        "fe": fe,
+        "device": str(device),
+    }):
+        # Guarda config como artefacto y loguea parámetros (aplanados)
+        log_yaml_as_params_and_artifact(config_path, artifact_subdir="configs")
 
-    all_labels = np.array(all_labels)
-    all_preds = np.array(all_preds)
-    all_probabilities = np.array(all_probabilities)
 
-    # Métricas
-    class_names = ['No Robo', 'Robo Armado']
-    cm = confusion_matrix(all_labels, all_preds)
-    tn, fp, fn, tp = cm.ravel()
-    accuracy = (tp + tn) / (tp + tn + fp + fn)
-    precision, recall_w, f1_w, _ = precision_recall_fscore_support(all_labels, all_preds, average='weighted')
-    specificity = tn / (tn + fp) if (tn + fp) > 0 else 0.0
-    sensitivity = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+        # Evaluación
+        all_preds, all_labels, all_probabilities = [], [], []
+        with torch.no_grad():
+            for inputs, labels in test_loader:
+                inputs, labels = inputs.to(device), labels.to(device)
+                outputs = model(inputs)
+                probabilities = torch.softmax(outputs, dim=1)
+                _, preds = torch.max(outputs, 1)
 
-    # Reporte por clase (para consola)
-    report = classification_report(all_labels, all_preds, target_names=class_names)
-    print("\n=== MATRIZ DE CONFUSIÓN ===")
-    print(cm)
-    print("\n=== MÉTRICAS DETALLADAS ===")
-    print(report)
-    print(f"Exactitud: {accuracy:.4f} | F1 (weighted): {f1_w:.4f} | Precisión (weighted): {precision:.4f}")
-    print(f"Sensibilidad: {sensitivity:.4f} | Especificidad: {specificity:.4f}")
-    print(f"[INFO] model={model_fe} seed={seed} run={run_dir.name} eval_run={eval_run_id}")
+                all_preds.extend(preds.cpu().numpy())
+                all_labels.extend(labels.cpu().numpy())
+                all_probabilities.extend(probabilities.cpu().numpy())
 
-    # Guardar artefactos de evaluación dentro del run evaluado
-    plot_confusion_matrix(cm, class_names, save_path=plots_dir / "confusion_matrix.png")
+        all_labels = np.array(all_labels)
+        all_preds = np.array(all_preds)
+        all_probabilities = np.array(all_probabilities)
 
-    # Detalle por muestra
-    detailed_df = pd.DataFrame({
-        'real': all_labels,
-        'predicho': all_preds,
-        'probabilidad_robo': all_probabilities[:, 1],
-        'probabilidad_no_robo': all_probabilities[:, 0]
-    })
-    detailed_df.to_csv(metrics_dir / "detailed_results.csv", index=False)
+        # Métricas
+        class_names = ['No Robo', 'Robo Armado']
+        cm = confusion_matrix(all_labels, all_preds)
+        tn, fp, fn, tp = cm.ravel()
+        accuracy = (tp + tn) / (tp + tn + fp + fn)
+        precision, recall_w, f1_w, _ = precision_recall_fscore_support(all_labels, all_preds, average='weighted')
+        specificity = tn / (tn + fp) if (tn + fp) > 0 else 0.0
+        sensitivity = tp / (tp + fn) if (tp + fn) > 0 else 0.0
 
-    # Resumen de métricas
-    metrics_df = pd.DataFrame([{
-        'accuracy': accuracy,
-        'precision_weighted': precision,
-        'recall_weighted': recall_w,
-        'f1_weighted': f1_w,
-        'specificity': specificity,
-        'sensitivity': sensitivity,
-        'seed': seed,
-        'model_name': model_fe,
-        'train_run_id': run_dir.name,
-        'eval_run_id': eval_run_id
-    }])
-    metrics_df.to_csv(metrics_dir / "model_metrics.csv", index=False)
+        # Reporte por clase (para consola)
+        report = classification_report(all_labels, all_preds, target_names=class_names)
+        print("\n=== MATRIZ DE CONFUSIÓN ===")
+        print(cm)
+        print("\n=== MÉTRICAS DETALLADAS ===")
+        print(report)
+        print(f"Exactitud: {accuracy:.4f} | F1 (weighted): {f1_w:.4f} | Precisión (weighted): {precision:.4f}")
+        print(f"Sensibilidad: {sensitivity:.4f} | Especificidad: {specificity:.4f}")
+        print(f"[INFO] model={model_fe} seed={seed} run={run_dir.name} eval_run={eval_run_id}")
 
-    print(f"\n✅ Guardado en:\n  {plots_dir / 'confusion_matrix.png'}\n  {metrics_dir / 'detailed_results.csv'}\n  {metrics_dir / 'model_metrics.csv'}")
+        # ---- Log de métricas a MLflow ----
+        mlflow.log_metric("accuracy", float(accuracy))
+        mlflow.log_metric("f1_weighted", float(f1_w))
+        mlflow.log_metric("precision_weighted", float(precision))
+        mlflow.log_metric("recall_weighted", float(recall_w))
+        mlflow.log_metric("specificity", float(specificity))
+        mlflow.log_metric("sensitivity", float(sensitivity))
 
-    return {
-        'cm': cm.tolist(),
-        'metrics': metrics_df.to_dict(orient='records')[0]
-    }
+        # Tags adicionales útiles
+        mlflow.set_tag("class_names", ",".join(class_names))
+        mlflow.set_tag("eval_folder", str(eval_root))
+
+        # ---- Artefactos locales y subida a MLflow ----
+        # Matriz de confusión (PNG)
+        cm_png = plots_dir / "confusion_matrix.png"
+        plot_confusion_matrix(cm, class_names, save_path=cm_png)
+        log_artifacts_safely(cm_png, artifact_path="plots")
+
+        # CSV detallado
+        detailed_df = pd.DataFrame({
+            'real': all_labels,
+            'predicho': all_preds,
+            'probabilidad_robo': all_probabilities[:, 1],
+            'probabilidad_no_robo': all_probabilities[:, 0]
+        })
+        detailed_csv = metrics_dir / "detailed_results.csv"
+        detailed_df.to_csv(detailed_csv, index=False)
+        log_artifacts_safely(detailed_csv, artifact_path="metrics")
+
+        # CSV resumen
+        metrics_df = pd.DataFrame([{
+            'accuracy': accuracy,
+            'precision_weighted': precision,
+            'recall_weighted': recall_w,
+            'f1_weighted': f1_w,
+            'specificity': specificity,
+            'sensitivity': sensitivity,
+            'seed': seed,
+            'model_name': model_fe,
+            'train_run_id': run_dir.name,
+            'eval_run_id': eval_run_id
+        }])
+        metrics_csv = metrics_dir / "model_metrics.csv"
+        metrics_df.to_csv(metrics_csv, index=False)
+        log_artifacts_safely(metrics_csv, artifact_path="metrics")
+
+        # También sube el modelo evaluado como referencia
+        log_model_file(best_model_path, artifact_subdir="evaluated_model")
+
+        print(f"\n✅ Guardado en disco y logueado en MLflow:\n  {cm_png}\n  {detailed_csv}\n  {metrics_csv}")
+
+        # Devuelve algo por si quieres usarlo como módulo
+        return {
+            'cm': cm.tolist(),
+            'metrics': metrics_df.to_dict(orient='records')[0]
+        }
 
 def analyze_misclassifications(run_dir:Path):
     """Analiza errores usando el CSV del eval más reciente de ese run"""
@@ -234,8 +294,19 @@ def analyze_misclassifications(run_dir:Path):
 if __name__ == "__main__":
     out = evaluate_model()
     # Reutiliza el mismo run_dir resuelto para analizar el eval más reciente
+    with open(config_path, 'r', encoding='utf-8') as f:
+        cfg = yaml.safe_load(f) or {}
+    # 👇 Antes pasabas solo 'model'; aquí debe ser el mismo 'model_fe' usado arriba
+    model_name = cfg.get('experiment', {}).get('model', args.model)
+    mode_fe = cfg.get('experiment', {}).get('mode', args.mode)
+    fe = args.fe
+    model_fe = f"{model_name}_{mode_fe}_{fe}"
+    rd = resolve_run_dir(cfg, model_fe)
+    analyze_misclassifications(rd)    
+    '''
+    # Reutiliza el mismo run_dir resuelto para analizar el eval más reciente
     with open(config_path, 'r') as f:
         cfg = yaml.safe_load(f)
     rd = resolve_run_dir(cfg, cfg.get('experiment', {}).get('model', 'solid'))
     analyze_misclassifications(rd)
-
+    '''

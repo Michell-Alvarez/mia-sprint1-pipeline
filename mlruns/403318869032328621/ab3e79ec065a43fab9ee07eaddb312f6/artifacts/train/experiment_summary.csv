@@ -1,0 +1,2 @@
+model_fe,run_id,seed,best_val_acc
+solid_fe_on_3,2025-10-30_18-55-20,42,0.8387

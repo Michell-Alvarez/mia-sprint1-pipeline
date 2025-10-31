@@ -4,17 +4,19 @@
 # Validación de argumentos
 # ==========================
 if [ $# -lt 2 ]; then
-    echo "Uso: ./run_pipeline.sh [fe_off | fe_on] [baseline | solid]"
+    echo "Uso: ./run_pipeline.sh [fe_off | fe_on] [baseline | solid] [0 | 1 | 2 | 3]"
     exit 1
 fi
 
 MODE=$1
 MODEL=$2
+FE=$3
 
 echo "==========================================="
 echo "  Ejecución del pipeline"
-echo "  Modo:   $MODE"
+echo "  Con o sin Feature Engineering:   $MODE"
 echo "  Modelo: $MODEL"
+echo "  Tipo de FE, 0: sin features | 1: combined_features | 2: color_features | 3: lbp_features: $FE"
 echo "==========================================="
 
 # ==========================
@@ -25,7 +27,7 @@ run_pipeline_steps() {
     python data_ingest/verify_structure.py --model "$MODEL" --mode "$MODE"
 
     echo "Paso 4: Creando índice de videos..."
-    python data_ingest/create_index.py --model "$MODEL" --mode "$MODE"
+    python data_ingest/create_index.py --model "$MODEL" --mode "$MODE" --fe "$FE"
 
     echo "Paso 5: Dividiendo dataset..."
     python data_ingest/split_dataset.py --model "$MODEL" --mode "$MODE"
@@ -40,10 +42,10 @@ run_pipeline_steps() {
     python eda/eda_train_test.py --model "$MODEL" --mode "$MODE"
 
     echo "Paso 9: Entrenando modelo..."
-    python models/train_cnn3d_${MODEL}.py --model "$MODEL" --mode "$MODE"
+    python models/train_cnn3d_${MODEL}.py --model "$MODEL" --mode "$MODE" --fe "$FE"
 
     echo "Paso 10: Evaluando modelo..."
-    python -m evaluation.evaluate_${MODEL} --model "$MODEL" --mode "$MODE"
+    python -m evaluation.evaluate_${MODEL} --model "$MODEL" --mode "$MODE" --fe "$FE"
     
     echo "Paso 11: Genera métricas para los modelos baseline y solid..."
     python tools/comparar_modelos.py --base-dir outputs    
@@ -59,7 +61,7 @@ if [ "$MODE" == "fe_on" ]; then
     python detection/feature_engineering.py
 
     echo "Paso 2: Detección y recorte de clips con YOLOv8..."
-    python detection/yolov8_detection.py
+    python detection/yolov8_detection.py --fe "$FE" --clean
 
     # Ejecutar el resto del pipeline
     run_pipeline_steps

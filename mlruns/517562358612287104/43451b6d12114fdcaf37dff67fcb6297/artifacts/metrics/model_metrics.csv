@@ -1,0 +1,2 @@
+accuracy,precision_weighted,recall_weighted,f1_weighted,specificity,sensitivity,seed,model_name,train_run_id,eval_run_id
+0.7037037037037037,0.7048275862068965,0.7037037037037037,0.7032967032967034,0.6666666666666666,0.7407407407407407,42,baseline_fe_off_0,2025-10-28_21-37-57,2025-10-28_21-51-34

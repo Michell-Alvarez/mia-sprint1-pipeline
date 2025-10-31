@@ -1,0 +1,9 @@
+model_name,train_run_id,best_val_acc,seed
+Modelo CNN base sin FE,2025-10-28_21-37-57,0.725,42
+Modelo CNN base con FE (color+textura),2025-10-28_22-12-09,0.7857,42
+Modelo CNN base con FE (color),2025-10-28_22-24-45,0.8571,42
+Modelo CNN base con FE (textura),2025-10-28_22-41-25,0.8333,42
+Modelo CNN+Atención temporal sin FE,2025-10-30_00-25-41,0.7667,42
+Modelo CNN+Atención temporal con FE (color+textura),2025-10-30_13-33-21,0.871,42
+Modelo CNN+Atención temporal con FE (color),2025-10-30_14-02-11,0.8065,42
+Modelo CNN+Atención temporal FE (textura),2025-10-30_18-55-20,0.8387,42
