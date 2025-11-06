@@ -100,9 +100,11 @@ robo_armado_pipeline/
 ├── mlruns/                       # Registro local de experimentos y artefactos de MLflow
 │
 ├── models/
+│   ├── analyze_optuna.py         # Script de resultados de experimentos Optuna
 │   ├── cnn3d_model_baseline.py   # Red neuronal 3D modelo CNN base
 │   ├── cnn3d_model_solid.py      # Red neuronal 3D modelo CNN+Atención temporal
 │   ├── train_cnn3d_baseline.py   # Entrenamiento modelo CNN base
+│   ├── optimize.py               # Script de optimización de hiperparámetros con Optuna integrado a Mlflow
 │   └── train_cnn3d_solid.py      # Entrenamiento modelo CNN+Atención temporal
 │
 # Estructura general de resultados (aplicable a cualquier variante de modelo)
@@ -150,6 +152,16 @@ robo_armado_pipeline/
 Para ejecutar el pipeline, primero instale las dependencias listadas en el archivo requirements.txt. Luego, ubicándose en la carpeta robo_armado_pipeline/, ejecute el script run_pipeline.sh para iniciar el proceso, los parámetros para su ejecución son:
 
 ./run_pipeline.sh [fe_off | fe_on] [baseline | solid] [0 | 1 | 2 | 3]
+
+## Optuna búsqueda Bayes (TPE)
+python models/optimize.py \
+  --config configs/config_solid_fe_on.yaml \
+  --optuna_name optuna_solid_fe_on_1 \
+  --sampler tpe \
+  --pruner median \
+  --direction maximize \
+  --n_trials 20
+
 
 ## Resultados esperados: 
 
