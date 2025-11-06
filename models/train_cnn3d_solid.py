@@ -8,6 +8,12 @@ from tqdm import tqdm
 from pathlib import Path
 from datetime import datetime
 import argparse
+import json
+try:
+    import optuna  # para tipado opcional; no es obligatorio
+except Exception:
+    optuna = None
+
 
 from cnn3d_model_solid import (
     build_dataloaders,
@@ -17,7 +23,7 @@ from cnn3d_model_solid import (
 import mlflow
 import mlflow.pytorch  # opcional: por si luego quieres usar autolog para PyTorch
 
-
+'''
 # Crear un único parser
 parser = argparse.ArgumentParser()
 
@@ -28,13 +34,35 @@ parser.add_argument('--model', type=str, default='baseline', choices=['baseline'
                     help="Modelo a ejecutar: baseline o solid")
 parser.add_argument('--fe', type=str, default='1', choices=['0', '1', '2', '3'],
                     help="Tipo de FE, 0: sin features | 1: combined_features | 2: color_features | 3: lbp_features")
+parser.add_argument('--base_outputs', type=str, default=None,
+                    help="Override para la raíz de salidas (ej.: outputs/optuna_solid_fe_on_1/trial_0)")
+parser.add_argument('--experiment_name', type=str, default=None,
+                    help="Override del nombre de experimento en MLflow")
                     
 # Parsear argumentos una sola vez
 args = parser.parse_args()
 
 # Construir la ruta del archivo de configuración
 current_dir = os.path.dirname(os.path.abspath(__file__))
-config_path = os.path.join(current_dir, '..', 'configs', f'config_{args.model}_{args.mode}.yaml')
+config_path = os.path.join(current_dir, '..', 'configs', f'config_{args.model}_{args.mode}.yaml')                    
+'''
+
+def build_parser():
+    p = argparse.ArgumentParser()
+    p.add_argument("--mode", choices=["fe_off", "fe_on"], default="fe_on",
+                   help="Modo de ejecución: con o sin feature engineering")
+    p.add_argument("--model", choices=["baseline", "solid"], default="solid",
+                   help="Modelo a ejecutar: baseline o solid")
+    p.add_argument("--fe", choices=["0", "1", "2", "3"], default="1",
+                   help="Tipo de FE, 0: sin features | 1: combined_features | 2: color_features | 3: lbp_features")
+    p.add_argument("--base_outputs", type=str, default="./outputs/run",
+                   help="Override para la raíz de salidas (ej.: outputs/optuna_solid_fe_on_1/trial_0)")
+    p.add_argument("--experiment_name", type=str, default="exp",
+                   help="Override del nombre de experimento en MLflow")
+    return p
+
+
+
 
 
 # Activa una optimización en cudnn para mejorar el rendimiento en modelos estáticos
@@ -75,18 +103,62 @@ def setup_logging(log_file: Path):
     logger.addHandler(ch)
     return logger
     
+
+trial = None  # quedará None cuando ejecutes sin Optuna (normal)
+
+def main(args=None, trial=None):
+    """Función principal del entrenamiento."""
+    if args is None:
+        # Si se ejecuta manualmente desde terminal
+        parser = build_parser()
+        args = parser.parse_args()
+
+    # --- Construir ruta de config ---
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    config_path = os.path.join(current_dir, '..', 'configs', f'config_{args.model}_{args.mode}.yaml')
     
-def main():
- 
+
     # Cargar config
     with open(config_path, 'r') as f:
         cfg = yaml.safe_load(f)
 
+    # Overrides opcionales desde CLI
+    if args.experiment_name:
+        exp_name = args.experiment_name
+    else:
+        exp_name = cfg.get('experiment', {}).get('name', 'RoboArmado – CNN3D – Atencion  – Temporal')
+
+    # Si OPTUNA_EXPERIMENT_NAME está seteado, tiene prioridad
+    exp_name = os.getenv("OPTUNA_EXPERIMENT_NAME", exp_name)
+
+    # Override de base_outputs: CLI > ENV > YAML
+    base_outputs = (args.base_outputs or
+                    os.getenv("OPTUNA_TRIAL_DIR") or
+                    cfg.get('paths', {}).get('base_outputs', 'outputs'))
+
+    # Posible override de hiperparámetros vía JSON en env (lo hace optimize.py)
+    overrides_json = os.getenv("OPTUNA_OVERRIDES")
+    if overrides_json:
+        patch = json.loads(overrides_json)
+        # merge superficial para 'training'
+        if 'training' in patch:
+            cfg.setdefault('training', {}).update(patch['training'])
+        # merge superficial para 'paths'
+        if 'paths' in patch:
+            cfg.setdefault('paths', {}).update(patch['paths'])
+
+    # Aplica base_outputs final al cfg
+    cfg.setdefault('paths', {})['base_outputs'] = base_outputs
+
     # MLflow tracking (usa var de entorno si existe; si no, local ./mlruns)
     tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "file:./mlruns")
     mlflow.set_tracking_uri(tracking_uri)
-    mlflow.set_experiment(cfg.get('experiment', {}).get('name', 'RoboArmado – CNN3D – Atencion  – Temporal'))
     
+    # Modo normal: use el nombre del YAML.
+    # mlflow.set_experiment(cfg.get('experiment', {}).get('name', 'RoboArmado – CNN3D – Atencion  – Temporal'))
+    # Con Optuna: use OPTUNA_EXPERIMENT_NAME (p. ej., optuna_solid_fe_on_1).
+    mlflow.set_experiment(exp_name)
+
     # Lee nombre del modelo y seed desde config
     model_name = cfg.get('experiment', {}).get('model', 'solid')  # "baseline" o "solid"
     mode_fe = cfg.get('experiment', {}).get('mode', 'fe_on')  # "fe_off" o "fe_on"
@@ -205,16 +277,28 @@ def main():
                     correct += (preds == labels).sum().item()
 
             val_acc = correct / max(total, 1)
+            val_loss_avg = val_loss / max(total, 1)  # ✅ promedio real
             scheduler.step()
 
-            logger.info(f"{epoch+1},{train_loss:.4f},{train_acc:.4f},{val_loss:.4f},{val_acc:.4f}")
+            logger.info(f"{epoch+1},{train_loss:.4f},{train_acc:.4f},{val_loss_avg:.4f},{val_acc:.4f}")
             print(f"Epoch {epoch+1}: Train Acc {train_acc:.4f} | Val Acc {val_acc:.4f}")
 
             # MLflow métricas por época (step=epoch)
             mlflow.log_metric("train_loss", float(train_loss), step=epoch+1)
             mlflow.log_metric("train_acc",  float(train_acc),  step=epoch+1)
-            mlflow.log_metric("val_loss",   float(val_loss),   step=epoch+1)
+            mlflow.log_metric("val_loss",   float(val_loss_avg),   step=epoch+1)
             mlflow.log_metric("val_acc",    float(val_acc),    step=epoch+1)
+
+            # ---- Reporte intermedio para Optuna (si 'optuna' inyecta un trial vía global) ----
+            if trial is not None:
+                # Usaremos val_loss para direction="minimize" o val_acc para "maximize"
+                #direction = os.getenv("OPTUNA_DIRECTION", "minimize")
+                direction = os.getenv("OPTUNA_DIRECTION", "maximize")
+                
+                metric_for_pruning = float(val_loss_avg) if direction == "minimize" else float(val_acc)
+                trial.report(metric_for_pruning, step=epoch + 1)
+                if trial.should_prune():
+                    raise optuna.TrialPruned(f"Pruned at epoch {epoch+1}")
 
             # --- Early stopping + guardar mejor ---
             improved = val_acc > best_acc + min_delta
@@ -276,5 +360,7 @@ def main():
             f.write(f"{model_fe},{run_id},{seed},{best_acc:.4f}\n")
         
 if __name__ == "__main__":
-    main()
+    parser = build_parser()
+    args = parser.parse_args()
+    main(args=args, trial=None)
 
