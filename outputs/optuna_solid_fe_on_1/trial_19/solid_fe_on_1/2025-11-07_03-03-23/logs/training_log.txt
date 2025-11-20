@@ -1,0 +1,139 @@
+2025-11-07 03:03:23,315 - INFO - Iniciando entrenamiento en cuda | model=solid_fe_on_1 | seed=42 | run_id=2025-11-07_03-03-23
+2025-11-07 03:03:23,365 - INFO - epoch,train_loss,train_acc,val_loss,val_acc
+2025-11-07 03:04:01,603 - INFO - 1,1.9334,0.4914,0.6886,0.5161
+2025-11-07 03:04:41,129 - INFO - 2,0.6943,0.5829,0.7443,0.4839
+2025-11-07 03:05:20,763 - INFO - 3,0.7134,0.5257,0.6688,0.5484
+2025-11-07 03:06:00,456 - INFO - 4,0.6431,0.6057,0.6367,0.6774
+2025-11-07 03:06:39,237 - INFO - 5,0.5914,0.7200,0.6030,0.6452
+2025-11-07 03:06:39,899 - INFO - Chromium init'ed with kwargs {}
+2025-11-07 03:06:39,899 - INFO - Found chromium path: /usr/bin/google-chrome
+2025-11-07 03:06:39,900 - INFO - Temp directory created: /tmp/tmpk3x8xl3v.
+2025-11-07 03:06:39,900 - INFO - Opening browser.
+2025-11-07 03:06:39,901 - INFO - Temp directory created: /tmp/tmpcjzru5qn.
+2025-11-07 03:06:39,908 - INFO - ldd failed. e: Command '['ldd', '/usr/bin/google-chrome']' returned non-zero exit status 1., stderr: None
+2025-11-07 03:06:39,908 - INFO - Temporary directory at: /tmp/tmpcjzru5qn
+2025-11-07 03:06:40,100 - INFO - Conforming 1 to file:///tmp/tmpk3x8xl3v/index.html
+2025-11-07 03:06:40,100 - INFO - Waiting on all navigates
+2025-11-07 03:06:40,591 - INFO - All navigates done, putting them all in queue.
+2025-11-07 03:06:40,592 - INFO - Getting tab from queue (has 1)
+2025-11-07 03:06:40,593 - INFO - Got D36E
+2025-11-07 03:06:40,593 - INFO - Processing Optimization_History_Plot.png
+2025-11-07 03:06:40,593 - INFO - Sending big command for Optimization_History_Plot.png.
+2025-11-07 03:06:40,660 - INFO - Sent big command for Optimization_History_Plot.png.
+2025-11-07 03:06:40,660 - INFO - Reloading tab D36E before return.
+2025-11-07 03:06:41,048 - INFO - Putting tab D36E back (queue size: 0).
+2025-11-07 03:06:41,049 - INFO - Waiting for all cleanups to finish.
+2025-11-07 03:06:41,049 - INFO - Exiting Kaleido
+2025-11-07 03:06:41,049 - INFO - Closing browser.
+2025-11-07 03:06:41,052 - INFO - Closing browser.
+2025-11-07 03:06:41,052 - INFO - TemporaryDirectory.cleanup() worked.
+2025-11-07 03:06:41,052 - INFO - shutil.rmtree worked.
+2025-11-07 03:06:41,053 - INFO - Cancelling tasks.
+2025-11-07 03:06:41,053 - INFO - Exiting Kaleido/Choreo
+2025-11-07 03:06:41,121 - INFO - TemporaryDirectory.cleanup() worked.
+2025-11-07 03:06:41,121 - INFO - shutil.rmtree worked.
+2025-11-07 03:06:41,122 - INFO - TemporaryDirectory.cleanup() worked.
+2025-11-07 03:06:41,122 - INFO - shutil.rmtree worked.
+2025-11-07 03:06:41,122 - INFO - Cancelling tasks.
+2025-11-07 03:06:41,122 - INFO - Exiting Kaleido/Choreo
+2025-11-07 03:06:41,138 - INFO - Chromium init'ed with kwargs {}
+2025-11-07 03:06:41,138 - INFO - Found chromium path: /usr/bin/google-chrome
+2025-11-07 03:06:41,138 - INFO - Temp directory created: /tmp/tmplcm4epwp.
+2025-11-07 03:06:41,139 - INFO - Opening browser.
+2025-11-07 03:06:41,139 - INFO - Temp directory created: /tmp/tmpjji1h8dz.
+2025-11-07 03:06:41,145 - INFO - ldd failed. e: Command '['ldd', '/usr/bin/google-chrome']' returned non-zero exit status 1., stderr: None
+2025-11-07 03:06:41,145 - INFO - Temporary directory at: /tmp/tmpjji1h8dz
+2025-11-07 03:06:41,340 - INFO - Conforming 1 to file:///tmp/tmplcm4epwp/index.html
+2025-11-07 03:06:41,340 - INFO - Waiting on all navigates
+2025-11-07 03:06:42,225 - INFO - All navigates done, putting them all in queue.
+2025-11-07 03:06:42,226 - INFO - Getting tab from queue (has 1)
+2025-11-07 03:06:42,227 - INFO - Got ECB3
+2025-11-07 03:06:42,227 - INFO - Processing Parallel_Coordinate_Plot.png
+2025-11-07 03:06:42,227 - INFO - Sending big command for Parallel_Coordinate_Plot.png.
+2025-11-07 03:06:42,927 - INFO - Sent big command for Parallel_Coordinate_Plot.png.
+2025-11-07 03:06:42,928 - INFO - Reloading tab ECB3 before return.
+2025-11-07 03:06:43,020 - INFO - Putting tab ECB3 back (queue size: 0).
+2025-11-07 03:06:43,020 - INFO - Waiting for all cleanups to finish.
+2025-11-07 03:06:43,020 - INFO - Exiting Kaleido
+2025-11-07 03:06:43,020 - INFO - Closing browser.
+2025-11-07 03:06:43,022 - INFO - Closing browser.
+2025-11-07 03:06:43,023 - INFO - TemporaryDirectory.cleanup() worked.
+2025-11-07 03:06:43,024 - INFO - shutil.rmtree worked.
+2025-11-07 03:06:43,024 - INFO - Cancelling tasks.
+2025-11-07 03:06:43,024 - INFO - Exiting Kaleido/Choreo
+2025-11-07 03:06:43,142 - INFO - TemporaryDirectory.cleanup() worked.
+2025-11-07 03:06:43,142 - INFO - shutil.rmtree worked.
+2025-11-07 03:06:43,142 - INFO - TemporaryDirectory.cleanup() worked.
+2025-11-07 03:06:43,142 - INFO - shutil.rmtree worked.
+2025-11-07 03:06:43,143 - INFO - Cancelling tasks.
+2025-11-07 03:06:43,143 - INFO - Exiting Kaleido/Choreo
+2025-11-07 03:06:43,158 - INFO - Chromium init'ed with kwargs {}
+2025-11-07 03:06:43,158 - INFO - Found chromium path: /usr/bin/google-chrome
+2025-11-07 03:06:43,159 - INFO - Temp directory created: /tmp/tmp_fk7mx5w.
+2025-11-07 03:06:43,159 - INFO - Opening browser.
+2025-11-07 03:06:43,159 - INFO - Temp directory created: /tmp/tmpohrl875e.
+2025-11-07 03:06:43,165 - INFO - ldd failed. e: Command '['ldd', '/usr/bin/google-chrome']' returned non-zero exit status 1., stderr: None
+2025-11-07 03:06:43,165 - INFO - Temporary directory at: /tmp/tmpohrl875e
+2025-11-07 03:06:43,354 - INFO - Conforming 1 to file:///tmp/tmp_fk7mx5w/index.html
+2025-11-07 03:06:43,355 - INFO - Waiting on all navigates
+2025-11-07 03:06:44,170 - INFO - All navigates done, putting them all in queue.
+2025-11-07 03:06:44,171 - INFO - Getting tab from queue (has 1)
+2025-11-07 03:06:44,171 - INFO - Got 8F70
+2025-11-07 03:06:44,171 - INFO - Processing Slice_Plot.png
+2025-11-07 03:06:44,172 - INFO - Sending big command for Slice_Plot.png.
+2025-11-07 03:06:44,268 - INFO - Sent big command for Slice_Plot.png.
+2025-11-07 03:06:44,269 - INFO - Reloading tab 8F70 before return.
+2025-11-07 03:06:44,339 - INFO - Putting tab 8F70 back (queue size: 0).
+2025-11-07 03:06:44,339 - INFO - Waiting for all cleanups to finish.
+2025-11-07 03:06:44,339 - INFO - Exiting Kaleido
+2025-11-07 03:06:44,339 - INFO - Closing browser.
+2025-11-07 03:06:44,343 - INFO - Closing browser.
+2025-11-07 03:06:44,343 - INFO - TemporaryDirectory.cleanup() worked.
+2025-11-07 03:06:44,343 - INFO - shutil.rmtree worked.
+2025-11-07 03:06:44,343 - INFO - Cancelling tasks.
+2025-11-07 03:06:44,343 - INFO - Exiting Kaleido/Choreo
+2025-11-07 03:06:44,462 - INFO - TemporaryDirectory.cleanup() worked.
+2025-11-07 03:06:44,462 - INFO - shutil.rmtree worked.
+2025-11-07 03:06:44,462 - INFO - TemporaryDirectory.cleanup() worked.
+2025-11-07 03:06:44,463 - INFO - shutil.rmtree worked.
+2025-11-07 03:06:44,463 - INFO - Cancelling tasks.
+2025-11-07 03:06:44,463 - INFO - Exiting Kaleido/Choreo
+2025-11-07 03:06:44,478 - INFO - Chromium init'ed with kwargs {}
+2025-11-07 03:06:44,479 - INFO - Found chromium path: /usr/bin/google-chrome
+2025-11-07 03:06:44,479 - INFO - Temp directory created: /tmp/tmp3lfl76ck.
+2025-11-07 03:06:44,479 - INFO - Opening browser.
+2025-11-07 03:06:44,480 - INFO - Temp directory created: /tmp/tmpj_pa0t9w.
+2025-11-07 03:06:44,485 - INFO - ldd failed. e: Command '['ldd', '/usr/bin/google-chrome']' returned non-zero exit status 1., stderr: None
+2025-11-07 03:06:44,485 - INFO - Temporary directory at: /tmp/tmpj_pa0t9w
+2025-11-07 03:06:44,676 - INFO - Conforming 1 to file:///tmp/tmp3lfl76ck/index.html
+2025-11-07 03:06:44,677 - INFO - Waiting on all navigates
+2025-11-07 03:06:45,545 - INFO - All navigates done, putting them all in queue.
+2025-11-07 03:06:45,546 - INFO - Getting tab from queue (has 1)
+2025-11-07 03:06:45,546 - INFO - Got 62E9
+2025-11-07 03:06:45,546 - INFO - Processing Hyperparameter_Importances.png
+2025-11-07 03:06:45,546 - INFO - Sending big command for Hyperparameter_Importances.png.
+2025-11-07 03:06:45,626 - INFO - Sent big command for Hyperparameter_Importances.png.
+2025-11-07 03:06:45,627 - INFO - Reloading tab 62E9 before return.
+2025-11-07 03:06:45,698 - INFO - Putting tab 62E9 back (queue size: 0).
+2025-11-07 03:06:45,698 - INFO - Waiting for all cleanups to finish.
+2025-11-07 03:06:45,699 - INFO - Exiting Kaleido
+2025-11-07 03:06:45,700 - INFO - Closing browser.
+2025-11-07 03:06:45,703 - INFO - Closing browser.
+2025-11-07 03:06:45,704 - INFO - TemporaryDirectory.cleanup() worked.
+2025-11-07 03:06:45,705 - INFO - shutil.rmtree worked.
+2025-11-07 03:06:45,705 - INFO - Cancelling tasks.
+2025-11-07 03:06:45,705 - INFO - Exiting Kaleido/Choreo
+2025-11-07 03:06:45,822 - INFO - TemporaryDirectory.cleanup() worked.
+2025-11-07 03:06:45,822 - INFO - shutil.rmtree worked.
+2025-11-07 03:06:45,823 - INFO - TemporaryDirectory.cleanup() worked.
+2025-11-07 03:06:45,823 - INFO - shutil.rmtree worked.
+2025-11-07 03:06:45,823 - INFO - Cancelling tasks.
+2025-11-07 03:06:45,823 - INFO - Exiting Kaleido/Choreo
+2025-11-07 03:06:46,000 - INFO - TemporaryDirectory.cleanup() worked.
+2025-11-07 03:06:46,001 - INFO - shutil.rmtree worked.
+2025-11-07 03:06:46,001 - INFO - TemporaryDirectory.cleanup() worked.
+2025-11-07 03:06:46,001 - INFO - shutil.rmtree worked.
+2025-11-07 03:06:46,001 - INFO - TemporaryDirectory.cleanup() worked.
+2025-11-07 03:06:46,001 - INFO - shutil.rmtree worked.
+2025-11-07 03:06:46,001 - INFO - TemporaryDirectory.cleanup() worked.
+2025-11-07 03:06:46,002 - INFO - shutil.rmtree worked.

@@ -23,29 +23,6 @@ from cnn3d_model_solid import (
 import mlflow
 import mlflow.pytorch  # opcional: por si luego quieres usar autolog para PyTorch
 
-'''
-# Crear un único parser
-parser = argparse.ArgumentParser()
-
-# Agregar ambos argumentos al mismo parser
-parser.add_argument('--mode', type=str, default='fe_off', choices=['fe_off', 'fe_on'],
-                    help="Modo de ejecución: con o sin feature engineering")
-parser.add_argument('--model', type=str, default='baseline', choices=['baseline', 'solid'],
-                    help="Modelo a ejecutar: baseline o solid")
-parser.add_argument('--fe', type=str, default='1', choices=['0', '1', '2', '3'],
-                    help="Tipo de FE, 0: sin features | 1: combined_features | 2: color_features | 3: lbp_features")
-parser.add_argument('--base_outputs', type=str, default=None,
-                    help="Override para la raíz de salidas (ej.: outputs/optuna_solid_fe_on_1/trial_0)")
-parser.add_argument('--experiment_name', type=str, default=None,
-                    help="Override del nombre de experimento en MLflow")
-                    
-# Parsear argumentos una sola vez
-args = parser.parse_args()
-
-# Construir la ruta del archivo de configuración
-current_dir = os.path.dirname(os.path.abspath(__file__))
-config_path = os.path.join(current_dir, '..', 'configs', f'config_{args.model}_{args.mode}.yaml')                    
-'''
 
 def build_parser():
     p = argparse.ArgumentParser()
@@ -59,9 +36,13 @@ def build_parser():
                    help="Override para la raíz de salidas (ej.: outputs/optuna_solid_fe_on_1/trial_0)")
     p.add_argument("--experiment_name", type=str, default="exp",
                    help="Override del nombre de experimento en MLflow")
+    p.add_argument("--amp", action="store_true",
+                   help="Usar mixed precision (FP16) con AMP (si no se pasa, usa lo que diga el YAML; por defecto: on)")
+    p.add_argument("--grad_accum_steps", type=int, default=1,
+                   help="Acumulación de gradientes. Ej.: 4 simula batch efectivo 4×")
+    p.add_argument("--grad_clip_norm", type=float, default=None,
+                   help="Clip de gradiente (L2). Ej.: 1.0 para estabilizar")                   
     return p
-
-
 
 
 
@@ -120,7 +101,15 @@ def main(args=None, trial=None):
 
     # Cargar config
     with open(config_path, 'r') as f:
-        cfg = yaml.safe_load(f)
+        cfg = yaml.safe_load(f) 
+
+    # --- Preferencia AMP: CLI > YAML (por defecto: True) ---
+    use_amp = cfg.get('training', {}).get('amp', True)
+
+
+    if hasattr(args, "amp") and args.amp:
+        use_amp = True
+
 
     # Overrides opcionales desde CLI
     if args.experiment_name:
@@ -221,8 +210,8 @@ def main(args=None, trial=None):
                                 weight_decay=cfg['training'].get('weight_decay', 1e-4))
         scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=cfg['training']['epochs'])
         #scaler = GradScaler(enabled=cfg['training'].get('amp', True))
-        scaler = GradScaler()
-        
+        scaler = GradScaler(enabled=use_amp)
+        print(f"[AMP] use_amp={use_amp}  | GradScaler.enabled={scaler.is_enabled()}")
         # --- Entrenamiento ---
         best_acc = 0.0
         patience = cfg['training'].get('early_stop_patience', 7)
@@ -233,86 +222,92 @@ def main(args=None, trial=None):
         if 'log_txt' in cfg['paths']:
             os.makedirs(os.path.dirname(cfg['paths']['log_txt']), exist_ok=True)
         
+        accum = max(1, getattr(args, "grad_accum_steps", 1))
+        clip_norm = getattr(args, "grad_clip_norm", None)
+
         logger.info("epoch,train_loss,train_acc,val_loss,val_acc")
         for epoch in range(cfg['training']['epochs']):
-        #for epoch in range(1, cfg['training']['epochs'] + 1):
             model.train()
-            train_loss = 0.0
+            train_loss_sum = 0.0
             correct = 0
             total = 0
 
-            #for vids, labels in tqdm(train_loader, desc=f"Epoch {epoch+1}/{cfg['training']['epochs']}"):
-            for vids, labels in tqdm(train_loader):
+            optimizer.zero_grad(set_to_none=True)
+            for step, (vids, labels) in enumerate(tqdm(train_loader), start=1):
                 vids, labels = vids.to(device), labels.to(device)
-                optimizer.zero_grad(set_to_none=True)
 
-                with autocast(enabled=cfg['training'].get('amp', True)):
+                with autocast(enabled=use_amp):
                     outputs = model(vids)
                     loss = criterion(outputs, labels)
+                    # 🔁 Divide para acumulación (mantiene escala correcta)
+                    loss = loss / accum
 
                 scaler.scale(loss).backward()
-                scaler.step(optimizer)
-                scaler.update()
 
-                train_loss += loss.item()
+                if step % accum == 0:
+                    # (opcional) clip de gradiente
+                    if clip_norm is not None:
+                        scaler.unscale_(optimizer)
+                        torch.nn.utils.clip_grad_norm_(model.parameters(), clip_norm)
+
+                    scaler.step(optimizer)
+                    scaler.update()
+                    optimizer.zero_grad(set_to_none=True)
+
+                # para métricas de entrenamiento (usa loss *antes* de dividir, si prefieres)
+                train_loss_sum += loss.item()  # ya está dividido; promediaremos por pasos
                 preds = outputs.argmax(dim=1)
                 total += labels.size(0)
                 correct += (preds == labels).sum().item()
 
+            # Promedios de train (por pasos, consistente con división)
+            train_loss_avg = train_loss_sum / max(len(train_loader), 1)
             train_acc = correct / max(total, 1)
 
             # --- Validación ---
             model.eval()
-            val_loss = 0.0
+            val_loss_sum = 0.0
             correct = 0
             total = 0
-            with torch.no_grad(), autocast(enabled=cfg['training'].get('amp', True)):
+            with torch.no_grad():
                 for vids, labels in val_loader:
                     vids, labels = vids.to(device), labels.to(device)
-                    outputs = model(vids)
-                    loss = criterion(outputs, labels)
-                    val_loss += loss.item()
+                    with autocast(enabled=use_amp):
+                        outputs = model(vids)
+                        loss = criterion(outputs, labels)
+                    # ✅ promediamos por batches (consistente con CrossEntropy reduction='mean')
+                    val_loss_sum += loss.item()
                     preds = outputs.argmax(dim=1)
                     total += labels.size(0)
                     correct += (preds == labels).sum().item()
 
             val_acc = correct / max(total, 1)
-            val_loss_avg = val_loss / max(total, 1)  # ✅ promedio real
+            val_loss_avg = val_loss_sum / max(len(val_loader), 1)
             scheduler.step()
 
-            logger.info(f"{epoch+1},{train_loss:.4f},{train_acc:.4f},{val_loss_avg:.4f},{val_acc:.4f}")
-            print(f"Epoch {epoch+1}: Train Acc {train_acc:.4f} | Val Acc {val_acc:.4f}")
+            # Logs
+            logger.info(f"{epoch+1},{train_loss_avg:.4f},{train_acc:.4f},{val_loss_avg:.4f},{val_acc:.4f}")
+            print(f"Epoch {epoch+1}: TrainLoss {train_loss_avg:.4f} Acc {train_acc:.4f} | ValLoss {val_loss_avg:.4f} Acc {val_acc:.4f}")
 
-            # MLflow métricas por época (step=epoch)
-            mlflow.log_metric("train_loss", float(train_loss), step=epoch+1)
-            mlflow.log_metric("train_acc",  float(train_acc),  step=epoch+1)
+            # MLflow
+            mlflow.log_metric("train_loss", float(train_loss_avg), step=epoch+1)
+            mlflow.log_metric("train_acc",  float(train_acc),      step=epoch+1)
             mlflow.log_metric("val_loss",   float(val_loss_avg),   step=epoch+1)
-            mlflow.log_metric("val_acc",    float(val_acc),    step=epoch+1)
+            mlflow.log_metric("val_acc",    float(val_acc),        step=epoch+1)
 
-            # ---- Reporte intermedio para Optuna (si 'optuna' inyecta un trial vía global) ----
+            # ---- Optuna pruning (si aplica) ----
             if trial is not None:
-                # Usaremos val_loss para direction="minimize" o val_acc para "maximize"
-                #direction = os.getenv("OPTUNA_DIRECTION", "minimize")
                 direction = os.getenv("OPTUNA_DIRECTION", "maximize")
-                
                 metric_for_pruning = float(val_loss_avg) if direction == "minimize" else float(val_acc)
                 trial.report(metric_for_pruning, step=epoch + 1)
                 if trial.should_prune():
                     raise optuna.TrialPruned(f"Pruned at epoch {epoch+1}")
 
-            # --- Early stopping + guardar mejor ---
+            # --- Early stopping + mejor modelo ---
             improved = val_acc > best_acc + min_delta
             if improved:
                 best_acc = val_acc
                 patience_counter = 0
-                '''
-                torch.save({
-                    'epoch': epoch,
-                    'state_dict': model.state_dict(),
-                    'optimizer': optimizer.state_dict(),
-                    'best_acc': best_acc
-                }, cfg['paths']['best_model'])
-                '''            
                 torch.save(model.state_dict(), paths['best_model'])
             else:
                 patience_counter += 1
@@ -320,13 +315,13 @@ def main(args=None, trial=None):
                     print(f"Early stopping en epoch {epoch}")
                     break
 
-            # Métrica final y artefactos del entrenamiento (dentro del run)
             mlflow.log_metric("best_val_acc", float(best_acc))
+
 
             # --- Log consola + archivo ---
             log_line = (f"Epoch {epoch+1:03d} | "
-                        f"TrainLoss {train_loss/len(train_loader):.4f} Acc {train_acc:.4f} | "
-                        f"ValLoss {val_loss/len(val_loader):.4f} Acc {val_acc:.4f} | "
+                        f"TrainLoss {train_loss_avg/len(train_loader):.4f} Acc {train_acc:.4f} | "
+                        f"ValLoss {val_loss_avg/len(val_loader):.4f} Acc {val_acc:.4f} | "
                         f"Best {best_acc:.4f}")
             print(log_line)
             if 'log_txt' in cfg['paths']:

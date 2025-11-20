@@ -1,2 +1,0 @@
-2025-11-06 18:38:16,251 - INFO - Iniciando entrenamiento en cuda | model=solid_fe_on_1 | seed=42 | run_id=2025-11-06_18-38-16
-2025-11-06 18:38:16,295 - INFO - epoch,train_loss,train_acc,val_loss,val_acc

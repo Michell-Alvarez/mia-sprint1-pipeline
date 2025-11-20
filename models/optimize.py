@@ -222,19 +222,39 @@ def main():
 
         hp = suggest_space(trial, search_space)
 
+        # --- 🔥 Nuevo bloque: convierte el batch efectivo en batch físico seguro + acumulación ---
+        effective_batch = int(hp["batch_size"])
+
+        # Mapea a batch físico compatible con tu GPU (8 GB)
+        if effective_batch == 128:
+            physical_batch, accum = 32, 4
+        elif effective_batch == 64:
+            physical_batch, accum = 32, 2
+        else:  # 32 o cualquier otro
+            physical_batch, accum = 32, 1
+
+
+        # --- Armar los overrides con AMP activado ---
         overrides = {
             "training": {
                 "lr": float(hp["lr"]),
                 "weight_decay": float(hp["weight_decay"]),
-                "batch_size": int(hp["batch_size"]),
+                "batch_size": physical_batch,      # 👈 batch físico (entra en VRAM)
+                "grad_accum_steps": accum,         # 👈 pasos de acumulación
+                "amp": True                        # 👈 forzar AMP (FP16)
             },
             "paths": {"base_outputs": str(trial_dir)},
         }
 
+        # 🔧 Evita fragmentación CUDA
+        os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True,max_split_size_mb:128"
+
+        # Exporta los overrides a train.py
         os.environ["OPTUNA_OVERRIDES"] = json.dumps(overrides)
         os.environ["OPTUNA_TRIAL_DIR"] = str(trial_dir)
         os.environ["OPTUNA_EXPERIMENT_NAME"] = args.optuna_name
         os.environ["OPTUNA_DIRECTION"] = args.direction
+
 
         # Ejecutar entrenamiento
         train_args = SimpleNamespace(
@@ -297,45 +317,14 @@ def main():
         trial.set_user_attr("metric_name", metric_name)
         trial.set_user_attr("metric_value", float(metric_value))
         trial.set_user_attr("best_ckpt_path", str(trial_dir / "checkpoints"))
+        trial.set_user_attr("effective_batch", effective_batch)
+        trial.set_user_attr("physical_batch", physical_batch)
+        trial.set_user_attr("grad_accum_steps", accum)
 
         # 6) Devuelve el valor tal cual (Maximize: mayor mejor; Minimize: menor mejor)
         return float(metric_value)
         
-        '''
-        # === Leer métricas ===
-        summary_csv = trial_dir / "metrics" / "experiment_summary.csv"
-        # Sugerimos estas claves; ajusta si tu CSV usa otros nombres
-        # Para maximizar (accuracy/F1): usa estas primero
-        prefer_maximize = ["best_val_acc", "best_val_f1", "val_acc", "val_f1"]
-        # Para minimizar (loss): usa estas primero
-        prefer_minimize = ["best_val_loss", "val_loss"]
 
-        if args.direction == "maximize":
-            metric = _read_metric_from_csv(summary_csv, prefer_maximize)
-        else:
-            metric = _read_metric_from_csv(summary_csv, prefer_minimize)
-
-        if metric is None:
-            print(f"[WARN] No se encontró una métrica válida en {summary_csv}. Prune.")
-            raise TrialPruned()
-
-        metric_name, metric_value = metric
-
-        # Validar finitud explícitamente
-        if not _is_finite(metric_value):
-            print(f"[WARN] Métrica no finita ({metric_name}={metric_value}). Prune.")
-            raise TrialPruned()
-
-        # Guardar como atributo del trial para inspección posterior
-        trial.set_user_attr("metric_name", metric_name)
-        trial.set_user_attr("metric_value", float(metric_value))
-        trial.set_user_attr("best_ckpt_path", str(trial_dir / "checkpoints"))
-
-        # Regresamos el valor TAL CUAL según la dirección
-        # - maximize: mayor es mejor (accuracy/f1)
-        # - minimize: menor es mejor (loss)
-        return float(metric_value)
-        '''
     # --- Ejecutar optimización ---
     study.optimize(objective, n_trials=args.n_trials, gc_after_trial=True)
 

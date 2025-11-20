@@ -136,7 +136,16 @@ robo_armado_pipeline/
 │   │   │   ├── metrics/
 │   │   │   │   └── experiment_summary.log           # Modelo, run_id, seed y mejor accuracy obtenido
 │   │   │   └── models/
-│   │   │       └── best_model.pth                   # Mejor modelo guardado (según validación)
+│   │   │   │   └── best_model.pth                   # Mejor modelo guardado (según validación)
+│
+├── pruebas_externas/
+|   |   ├── resultados/
+│   │   │   ├── resultados_detec_videos_baseline.xlsx   # Comparación del rendimiento del modelo en videos locales (Offline)
+│   │   │   └── resultados_detec_webcam_baseline.xlsx   # Comparación del rendimiento del modelo en tiempo real (Webcam)
+|   |   ├── videos/
+│   │   │   └── eval_rendimiento_videos.py      # Script que mide FPS y latencia total para videos locales 
+|   |   └── webcam/
+│   │   │   └── eval_rendimiento_realtime.py    # Script que mide FPS y latencia total en tiempo real  
 │
 ├── tools/
 |   |   ├── comparar_modelos.py     # Generar las métricas para los modelos CNN base y CNN+Atención temporal
