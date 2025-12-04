@@ -1,0 +1,11 @@
+timestamp,video,modelo,frames_procesados,duracion_sec,latencia_inferencia_ms,latencia_total_ms,fps_promedio,frames_con_arma,tp_video,recall_video
+2025-12-04T15:12:36,01_Pistola_Movimiento_Caminando.mp4,YOLOv8n,149,7.08,24.11,24.13,28.05,3,1,1.0
+2025-12-04T15:12:36,01_Pistola_Movimiento_Caminando.mp4,YOLOv8x,149,7.08,23.07,23.09,28.05,3,1,1.0
+2025-12-04T15:12:45,02_Sentado_Sofa_Pistola_Distancia.mp4,YOLOv8n,342,8.87,4.46,4.49,38.55,0,0,0.0
+2025-12-04T15:12:45,02_Sentado_Sofa_Pistola_Distancia.mp4,YOLOv8x,342,8.87,20.96,21.0,38.55,5,1,1.0
+2025-12-04T15:12:54,03_Pistola_Movimiento_Ambas_Manos.mp4,YOLOv8n,324,8.68,4.94,4.99,37.34,147,1,1.0
+2025-12-04T15:12:54,03_Pistola_Movimiento_Ambas_Manos.mp4,YOLOv8x,324,8.68,21.25,21.31,37.34,173,1,1.0
+2025-12-04T15:13:02,04_Sentado_Pistola_Guantes_Negros_Brazo_Izquierdo.mp4,YOLOv8n,345,8.94,4.49,4.52,38.61,61,1,1.0
+2025-12-04T15:13:02,04_Sentado_Pistola_Guantes_Negros_Brazo_Izquierdo.mp4,YOLOv8x,345,8.94,20.9,20.94,38.61,51,1,1.0
+2025-12-04T15:13:11,05_Pistola_Guantes_Negros_Brazo_Izquierdo.mp4,YOLOv8n,321,8.35,4.44,4.48,38.44,190,1,1.0
+2025-12-04T15:13:11,05_Pistola_Guantes_Negros_Brazo_Izquierdo.mp4,YOLOv8x,321,8.35,21.08,21.12,38.44,259,1,1.0
