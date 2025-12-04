@@ -4,10 +4,21 @@ import time
 import os
 import pandas as pd
 
-MODEL_PATH = "/home/michell-alvarez/Descargas/best_8n.pt"
-IMG_SIZE = 640
+# ==============================
+# CONFIGURACIÓN
+# ==============================
+MODEL_PATH = "/home/michell-alvarez/Descargas/best_8x.pt"
+IMG_SIZE = 512
 CONF_THRESHOLD = 0.5
 
+VIDEO_FOLDER = "/home/michell-alvarez/Descargas/zona_segura/hold-out"
+
+# Extensiones válidas de video
+VIDEO_EXT = (".mp4", ".avi", ".mov", ".mkv")
+
+# ==============================
+# CARGAR MODELO
+# ==============================
 model = YOLO(MODEL_PATH)
 
 # Buscar índice de clase "pistol"
@@ -20,25 +31,22 @@ for k, v in model.names.items():
 if IDX_PISTOL is None:
     raise ValueError("No se encontró la clase pistola en el modelo.")
 
-print(f"Índice de pistola: {IDX_PISTOL}")
+# ==============================
+# LEER TODOS LOS VIDEOS DE LA CARPETA
+# ==============================
+videos_sin_arma = []
+for file in os.listdir(VIDEO_FOLDER):
+    if file.lower().endswith(VIDEO_EXT):
+        videos_sin_arma.append(os.path.join(VIDEO_FOLDER, file))
 
-# Lista de videos "zona segura" (sin armas)
-zona_segura_videos = [
-    "/home/michell-alvarez/Descargas/zona_segura/1_Camara_en_mano.mp4",
-    "/home/michell-alvarez/Descargas/zona_segura/2_Brillos_Metalicos.mp4",
-    "/home/michell-alvarez/Descargas/zona_segura/3_Bolsos_Mochilas.mp4",
-    "/home/michell-alvarez/Descargas/zona_segura/4_Brillos_Metalicos.mp4",
-    "/home/michell-alvarez/Descargas/zona_segura/5_Multiples_Personas.mp4",
-    "/home/michell-alvarez/Descargas/zona_segura/6_Persona_Sentada_Sin_Arma.mp4",
-    "/home/michell-alvarez/Descargas/zona_segura/7_Noche.mp4",
-    "/home/michell-alvarez/Descargas/zona_segura/8_Sombras_Intensas.mp4",
-    "/home/michell-alvarez/Descargas/zona_segura/9_Auto_Movimiento.mp4",
-    "/home/michell-alvarez/Descargas/zona_segura/10_Multiples_Personas.mp4",
-]
+videos_sin_arma.sort()  # ordenar alfabéticamente
+
+print(f"Total de videos encontrados: {len(videos_sin_arma)}")
+
 
 resultados_totales = []
 
-for video_path in zona_segura_videos:
+for video_path in videos_sin_arma:
     if not os.path.exists(video_path):
         print(f" No existe el video: {video_path}")
         continue
@@ -112,7 +120,7 @@ for video_path in zona_segura_videos:
 
         # Guardar en lista (una fila por video)
         resultados_totales.append({
-            "video": os.path.basename(video_path),  
+            "video": os.path.basename(video_path),  # <-- pon aquí el nombre del video
             "frames_procesados": n_frames,
             "duracion_sec": round(duration_sec, 2),
             "latencia_inferencia_ms": round(avg_infer_ms, 2),
@@ -123,5 +131,5 @@ for video_path in zona_segura_videos:
         })
 
 df = pd.DataFrame(resultados_totales)
-df.to_excel("/home/michell-alvarez/Descargas/zona_segura/robustez_zona_segura.xlsx", index=False)
+df.to_excel("/home/michell-alvarez/Descargas/zona_segura/hold-out/robustez_zona_segura.xlsx", index=False)
 print("Excel generado correctamente.")
