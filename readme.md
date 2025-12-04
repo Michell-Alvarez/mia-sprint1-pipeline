@@ -147,7 +147,9 @@ robo_armado_pipeline/
 |   |   ├── videos/
 │   │   │   ├── eval_rendimiento_videos.py      # Script que mide FPS y latencia total para videos locales 
 │   │   │   ├── robustez_zona_presencia_arma.py	# Script que evalúa la robustez en zona con presencia de arma midiendo verdaderos positivos (TP) y falsos negativos (FN)             
-│   │   │   └── robustez_zona_segura.py	        # Script que evalúa la robustez en zona segura midiendo falsos positivos (FP) y (FP por minuto)
+│   │   │   ├── robustez_zona_segura.py	        # Script que evalúa la robustez en zona segura midiendo falsos positivos (FP) y (FP por minuto)
+│   │   │   ├── validación_a_b_zona_presencia_arma.py  #Realiza un A/B Test de dos modelos YOLOv8 en escenarios con arma. 
+│   │   │   └── validación_a_b_zona_segura.py  # Realiza un A/B Test de dos modelos YOLOv8 en escenarios sin arma.
 |   |   └── webcam/
 │   │   │   └── eval_rendimiento_realtime.py    # Script que mide FPS y latencia total en tiempo real  
 │
