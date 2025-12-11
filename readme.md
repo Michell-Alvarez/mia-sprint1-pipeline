@@ -141,9 +141,15 @@ robo_armado_pipeline/
 ├── pruebas_externas/
 |   |   ├── resultados/
 │   │   │   ├── resultados_detec_videos_baseline.xlsx   # Comparación del rendimiento del modelo en videos locales (Offline)
-│   │   │   └── resultados_detec_webcam_baseline.xlsx   # Comparación del rendimiento del modelo en tiempo real (Webcam)
+│   │   │   ├── resultados_detec_webcam_baseline.xlsx   # Comparación del rendimiento del modelo en tiempo real (Webcam)
+│   │   │   ├── robustez_zona_con_presencia_arma.xlsx   # Registro de frames procesados y el desempeño del modelo mediante verdaderos positivos (TP) y falsos negativos (FN).
+│   │   │   └── robustez_zona_segura.xlsx               # Registro del rendimiento del modelo por video, incluyendo latencias, FPS y falsos positivos (FP) por minuto.
 |   |   ├── videos/
-│   │   │   └── eval_rendimiento_videos.py      # Script que mide FPS y latencia total para videos locales 
+│   │   │   ├── eval_rendimiento_videos.py      # Script que mide FPS y latencia total para videos locales 
+│   │   │   ├── evaluación_tecnica_validacion_operativa.ipynb    # Prueba con stakeholder y latencia
+│   │   │   ├── robustez_zona_presencia_arma.py	# Script que evalúa la robustez en zona con presencia de arma midiendo verdaderos positivos (TP) y falsos negativos (FN)             
+│   │   │   └── robustez_zona_segura.py	        # Script que evalúa la robustez en zona segura midiendo falsos positivos (FP) y (FP por minuto)
+
 |   |   └── webcam/
 │   │   │   └── eval_rendimiento_realtime.py    # Script que mide FPS y latencia total en tiempo real  
 │
